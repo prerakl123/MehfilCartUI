@@ -1,0 +1,52 @@
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    line-height: 1;
+}
+
+.success {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.warning {
+    background: var(--color-warning-light);
+    color: var(--color-secondary-dark);
+}
+
+.error {
+    background: var(--color-error-light);
+    color: var(--color-error);
+}
+
+.info {
+    background: var(--color-info-light);
+    color: var(--color-info);
+}
+
+.neutral {
+    background: var(--color-bg-subtle);
+    color: var(--color-text-secondary);
+}
+
+.primary {
+    background: var(--color-primary-ghost);
+    color: var(--color-primary);
+}
+
+/* Diet indicator dots */
+.veg {
+    background: #D1FAE5;
+    color: #059669;
+}
+
+.nonVeg {
+    background: #FEE2E2;
+    color: #DC2626;
+}
