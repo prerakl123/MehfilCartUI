@@ -8,9 +8,11 @@ import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import styles from './restaurants.module.css';
+import { useAuthStore } from '@/store/authStore';
 
 export default function RestaurantsPage() {
     const toast = useToast();
+    const { isAuthenticated, role } = useAuthStore();
     const [restaurants, setRestaurants] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -84,8 +86,24 @@ export default function RestaurantsPage() {
         }
     };
 
+    const handleDelete = async (id, e) => {
+        if (e) e.stopPropagation();
+        if (!confirm('Are you sure you want to delete this restaurant? This cannot be undone.')) return;
+        try {
+            await api.delete(`/admin/restaurants/${id}`);
+            toast.success('Restaurant deleted');
+            fetchRestaurants();
+        } catch (err) {
+            toast.error(err.message || 'Failed to delete restaurant');
+        }
+    };
+
     if (loading) {
         return <div className={styles.page}><p>Loading restaurants...</p></div>;
+    }
+
+    if (!isAuthenticated || role !== 'SUPER_ADMIN') {
+        return null;
     }
 
     return (
@@ -128,6 +146,9 @@ export default function RestaurantsPage() {
                             <div className={styles.cardActions}>
                                 <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(r); }}>
                                     Edit
+                                </Button>
+                                <Button variant="ghost" size="sm" style={{ color: 'var(--color-error)' }} onClick={(e) => handleDelete(r.id, e)}>
+                                    Delete
                                 </Button>
                             </div>
                         </div>

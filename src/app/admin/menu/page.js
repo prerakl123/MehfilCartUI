@@ -10,11 +10,21 @@ import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import sharedStyles from '../shared.module.css';
 
+import { useAuthStore } from '@/store/authStore';
+
 const DIET_TYPES = ['VEG', 'NON_VEG', 'VEGAN', 'EGGETARIAN'];
 
 export default function MenuPage() {
     const toast = useToast();
-    const [restaurantId, setRestaurantId] = useState(null);
+    const { role, restaurantId: authRestaurantId } = useAuthStore();
+    const [restaurantId, setLocalRestaurantId] = useState(authRestaurantId);
+
+    useEffect(() => {
+        if (authRestaurantId && role !== 'SUPER_ADMIN') {
+            setLocalRestaurantId(authRestaurantId);
+        }
+    }, [authRestaurantId, role]);
+
     const [menu, setMenu] = useState({ categories: [], items: [] });
     const [loading, setLoading] = useState(false);
 
@@ -119,7 +129,7 @@ export default function MenuPage() {
                     <p className={sharedStyles.subtitle}>Manage categories and items</p>
                 </div>
                 <div className={sharedStyles.toolbar}>
-                    <RestaurantSelector className={sharedStyles.select} onSelect={setRestaurantId} />
+                    <RestaurantSelector className={sharedStyles.select} onSelect={setLocalRestaurantId} />
                     {restaurantId && (
                         <Button onClick={() => setCatModal({ open: true, data: null })}>
                             + Add Category

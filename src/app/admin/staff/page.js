@@ -13,8 +13,14 @@ import sharedStyles from '../shared.module.css';
 
 export default function StaffPage() {
     const toast = useToast();
-    const { user } = useAuthStore();
-    const [restaurantId, setRestaurantId] = useState(null);
+    const { user, role, restaurantId: authRestaurantId } = useAuthStore();
+    const [restaurantId, setLocalRestaurantId] = useState(authRestaurantId);
+
+    useEffect(() => {
+        if (authRestaurantId && role !== 'SUPER_ADMIN') {
+            setLocalRestaurantId(authRestaurantId);
+        }
+    }, [authRestaurantId, role]);
     const [staffList, setStaffList] = useState([]);
     const [loading, setLoading] = useState(false);
 
@@ -88,7 +94,7 @@ export default function StaffPage() {
                     <p className={sharedStyles.subtitle}>Manage waitstaff and local admins</p>
                 </div>
                 <div className={sharedStyles.toolbar}>
-                    <RestaurantSelector className={sharedStyles.select} onSelect={setRestaurantId} />
+                    <RestaurantSelector className={sharedStyles.select} onSelect={setLocalRestaurantId} />
                     {restaurantId && (
                         <Button onClick={() => setModal({ open: true })}>
                             + Add Staff

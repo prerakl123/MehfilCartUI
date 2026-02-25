@@ -9,12 +9,23 @@ import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import sharedStyles from '../shared.module.css';
+import { useAuthStore } from '@/store/authStore';
+import { APP_CONFIG } from '@/constants/config';
 
 export default function TablesPage() {
     const toast = useToast();
-    const [restaurantId, setRestaurantId] = useState(null);
+    const { user, role, restaurantId: authRestaurantId } = useAuthStore();
+    const [restaurantId, setLocalRestaurantId] = useState(authRestaurantId);
+
+    useEffect(() => {
+        if (authRestaurantId && role !== 'SUPER_ADMIN') {
+            setLocalRestaurantId(authRestaurantId);
+        }
+    }, [authRestaurantId, role]);
+
     const [tables, setTables] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false); // Added saving state
 
     const [modal, setModal] = useState({ open: false, data: null });
 
@@ -38,8 +49,13 @@ export default function TablesPage() {
         fetchTables(restaurantId);
     }, [restaurantId, fetchTables]);
 
+    const openEdit = (table) => {
+        setModal({ open: true, data: table });
+    };
+
     const handleSave = async (e) => {
         e.preventDefault();
+        setSaving(true); // Set saving to true
         const formData = new FormData(e.target);
         const body = {
             label: formData.get('label'),
@@ -61,6 +77,45 @@ export default function TablesPage() {
             fetchTables(restaurantId);
         } catch (err) {
             toast.error(err.message || 'Failed to save table');
+        } finally {
+            setSaving(false); // Set saving to false
+        }
+    };
+
+    const handleDelete = async (tableId, e) => {
+        if (e) e.stopPropagation();
+        if (!confirm('Are you sure you want to delete this table? This action cannot be undone.')) return;
+        try {
+            await api.delete(`/admin/tables/${restaurantId}/${tableId}`);
+            toast.success('Table deleted');
+            fetchTables(restaurantId);
+        } catch (err) {
+            toast.error(err.message || 'Failed to delete table');
+        }
+    };
+
+    const downloadQrCode = async (tableId, tableLabel) => {
+        try {
+            // Can't use api.get directly because it expects JSON, so use raw fetch with auth
+            const token = localStorage.getItem('access_token');
+            const baseURL = APP_CONFIG.API_BASE_URL;
+            const res = await fetch(`${baseURL}/admin/tables/${restaurantId}/${tableId}/qr?base_url=${encodeURIComponent(window.location.origin)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!res.ok) throw new Error('Failed to fetch QR');
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `table-${tableLabel}-qr.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            toast.error('Failed to download QR code');
         }
     };
 
@@ -72,7 +127,7 @@ export default function TablesPage() {
                     <p className={sharedStyles.subtitle}>Manage dining tables and QR codes</p>
                 </div>
                 <div className={sharedStyles.toolbar}>
-                    <RestaurantSelector className={sharedStyles.select} onSelect={setRestaurantId} />
+                    <RestaurantSelector className={sharedStyles.select} onSelect={setLocalRestaurantId} />
                     {restaurantId && (
                         <Button onClick={() => setModal({ open: true, data: null })}>
                             + Add Table
@@ -112,15 +167,18 @@ export default function TablesPage() {
                                 </div>
                                 {table.qr_code_url && (
                                     <div className={sharedStyles.cardRow}>
-                                        <a href={table.qr_code_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>
-                                            View QR Code
-                                        </a>
+                                        <Button size="sm" variant="ghost" onClick={() => downloadQrCode(table.id, table.label)} style={{ padding: 0, textDecoration: 'underline' }}>
+                                            Download QR Code
+                                        </Button>
                                     </div>
                                 )}
                             </div>
                             <div className={sharedStyles.cardActions}>
-                                <Button size="sm" variant="secondary" onClick={() => setModal({ open: true, data: table })}>
+                                <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); openEdit(table); }}>
                                     Edit
+                                </Button>
+                                <Button size="sm" variant="ghost" style={{ color: 'var(--color-error)' }} onClick={(e) => handleDelete(table.id, e)}>
+                                    Delete
                                 </Button>
                             </div>
                         </div>

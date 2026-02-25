@@ -19,7 +19,16 @@ export default function AdminDashboard() {
 
     const [statsData, setStatsData] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [restaurantId, setLocalRestaurantId] = useState(null);
+
+    // Auto-select restaurant for RESTAURANT_ADMIN
+    const authRestaurantId = useAuthStore(state => state.restaurantId);
+    const [restaurantId, setLocalRestaurantId] = useState(authRestaurantId);
+
+    useEffect(() => {
+        if (authRestaurantId && role !== 'SUPER_ADMIN') {
+            setLocalRestaurantId(authRestaurantId);
+        }
+    }, [authRestaurantId, role]);
 
     const fetchStats = useCallback(async (rId) => {
         if (!rId) {

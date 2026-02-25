@@ -22,6 +22,17 @@ export function useSession() {
         }
     };
 
+    /** Get active session by table */
+    const getActiveSessionForTable = async (tableId) => {
+        try {
+            const data = await api.get(`/sessions/table/${tableId}/active`);
+            return data;
+        } catch (err) {
+            console.error('Failed to query session for table:', err);
+            throw err;
+        }
+    };
+
     /** Get session details */
     const fetchSession = useCallback(async (sessionId) => {
         if (!sessionId) return null;
@@ -88,6 +99,7 @@ export function useSession() {
         sessionData,
         loading,
         createSession,
+        getActiveSessionForTable,
         fetchSession,
         joinSession,
         handleMember,

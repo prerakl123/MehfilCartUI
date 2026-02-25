@@ -39,7 +39,30 @@ async function request(endpoint, options = {}) {
         config.headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(buildUrl(endpoint), config);
+    config.credentials = 'include';
+    let response = await fetch(buildUrl(endpoint), config);
+
+    // Automatic token refresh logic
+    if (response.status === 401 && endpoint !== '/auth/refresh' && endpoint !== '/auth/login') {
+        try {
+            const refreshRes = await fetch(buildUrl('/auth/refresh'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include' // Important for sending the httpOnly refresh_token cookie
+            });
+
+            if (refreshRes.ok) {
+                const refreshData = await refreshRes.json();
+                localStorage.setItem('access_token', refreshData.access_token);
+
+                // Retry the original request
+                config.headers['Authorization'] = `Bearer ${refreshData.access_token}`;
+                response = await fetch(buildUrl(endpoint), config);
+            }
+        } catch (e) {
+            console.error("Token refresh failed", e);
+        }
+    }
 
     if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));

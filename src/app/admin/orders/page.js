@@ -15,9 +15,19 @@ const STATUS_FLOW = {
     READY: { next: 'SERVED', label: 'Mark Served', variant: 'success' },
 };
 
+import { useAuthStore } from '@/store/authStore';
+
 export default function OrdersPage() {
     const toast = useToast();
-    const [restaurantId, setRestaurantId] = useState(null);
+    const { role, restaurantId: authRestaurantId } = useAuthStore();
+    const [restaurantId, setLocalRestaurantId] = useState(authRestaurantId);
+
+    useEffect(() => {
+        if (authRestaurantId && role !== 'SUPER_ADMIN') {
+            setLocalRestaurantId(authRestaurantId);
+        }
+    }, [authRestaurantId, role]);
+
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(false);
 
@@ -96,7 +106,7 @@ export default function OrdersPage() {
                     <p className={sharedStyles.subtitle}>Kitchen Display System (KDS)</p>
                 </div>
                 <div className={sharedStyles.toolbar}>
-                    <RestaurantSelector className={sharedStyles.select} onSelect={setRestaurantId} />
+                    <RestaurantSelector className={sharedStyles.select} onSelect={setLocalRestaurantId} />
                     {restaurantId && (
                         <Button variant="secondary" onClick={() => fetchOrders(restaurantId)}>
                             ↻ Refresh

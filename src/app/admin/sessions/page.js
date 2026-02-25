@@ -7,10 +7,19 @@ import RestaurantSelector from '@/components/admin/RestaurantSelector';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import sharedStyles from '../shared.module.css';
+import { useAuthStore } from '@/store/authStore';
 
 export default function SessionsPage() {
     const toast = useToast();
-    const [restaurantId, setRestaurantId] = useState(null);
+    const { role, restaurantId: authRestaurantId } = useAuthStore();
+    const [restaurantId, setLocalRestaurantId] = useState(authRestaurantId);
+
+    useEffect(() => {
+        if (authRestaurantId && role !== 'SUPER_ADMIN') {
+            setLocalRestaurantId(authRestaurantId);
+        }
+    }, [authRestaurantId, role]);
+
     const [sessions, setSessions] = useState([]);
     const [loading, setLoading] = useState(false);
 
@@ -63,7 +72,7 @@ export default function SessionsPage() {
                     <p className={sharedStyles.subtitle}>Monitor active dining sessions</p>
                 </div>
                 <div className={sharedStyles.toolbar}>
-                    <RestaurantSelector className={sharedStyles.select} onSelect={setRestaurantId} />
+                    <RestaurantSelector className={sharedStyles.select} onSelect={setLocalRestaurantId} />
                     {restaurantId && (
                         <Button variant="secondary" onClick={() => fetchSessions(restaurantId)}>
                             ↻ Refresh

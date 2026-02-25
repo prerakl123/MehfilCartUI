@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useCallback, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useState } from 'react';
 import styles from './Toast.module.css';
 
 const ToastContext = createContext(null);
@@ -23,12 +23,12 @@ export function ToastProvider({ children }) {
         }, duration);
     }, []);
 
-    const toast = {
+    const toast = React.useMemo(() => ({
         success: (msg) => addToast(msg, 'success'),
         error: (msg) => addToast(msg, 'error'),
         warning: (msg) => addToast(msg, 'warning'),
         info: (msg) => addToast(msg, 'info'),
-    };
+    }), [addToast]);
 
     return (
         <ToastContext.Provider value={toast}>
