@@ -1,3 +1,4 @@
+import { ToastProvider } from "@/components/ui/Toast";
 import "./globals.css";
 
 export const metadata = {
@@ -13,7 +14,11 @@ export default function RootLayout({ children }) {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <meta name="theme-color" content="#6C3CE1" />
       </head>
-      <body>{children}</body>
+      <body>
+        <ToastProvider>
+          {children}
+        </ToastProvider>
+      </body>
     </html>
   );
 }

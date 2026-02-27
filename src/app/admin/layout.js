@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-import { ToastProvider } from '@/components/ui/Toast';
+import ProfileModal from '@/components/admin/ProfileModal';
 import Link from 'next/link';
 import {
     LayoutDashboard,
@@ -19,7 +19,8 @@ import {
     UtensilsCrossed,
     Moon,
     Sun,
-    ChevronDown
+    ChevronDown,
+    UserPen
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -41,6 +42,7 @@ export default function AdminLayout({ children }) {
     const { isAuthenticated, isLoading, initialize, user, role, logout } = useAuthStore();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const [showProfileModal, setShowProfileModal] = useState(false);
     const [theme, setTheme] = useState('light');
 
     useEffect(() => {
@@ -73,7 +75,11 @@ export default function AdminLayout({ children }) {
         if (!isLoading && !isAuthenticated) {
             router.replace('/login');
         }
-    }, [isLoading, isAuthenticated, router]);
+        // Guard: prevent guests from accessing admin
+        if (!isLoading && isAuthenticated && (role === 'TABLE_GUEST' || role === 'TABLE_HOST')) {
+            router.replace('/');
+        }
+    }, [isLoading, isAuthenticated, role, router]);
 
     // Close mobile menu on route change
     useEffect(() => {
@@ -153,6 +159,13 @@ export default function AdminLayout({ children }) {
                     {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
                     {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
                 </button>
+                <button
+                    onClick={() => setShowProfileModal(true)}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                    <UserPen className="h-5 w-5" />
+                    Edit Profile
+                </button>
                 <div className="mt-2 flex items-center gap-3 rounded-lg bg-secondary/50 p-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary">
                         {initials}
@@ -174,7 +187,7 @@ export default function AdminLayout({ children }) {
     );
 
     return (
-        <ToastProvider>
+        <>
             <div className="flex min-h-screen bg-secondary/20">
                 {/* Desktop Sidebar */}
                 <aside className="hidden md:flex w-64 flex-col border-r border-border bg-card shadow-sm fixed inset-y-0 z-20">
@@ -226,6 +239,13 @@ export default function AdminLayout({ children }) {
                                             <p className="text-xs text-muted-foreground truncate">{role?.replace('_', ' ')}</p>
                                         </div>
                                         <button
+                                            onClick={() => { setShowProfileModal(true); setUserMenuOpen(false); }}
+                                            className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-accent transition-colors"
+                                        >
+                                            <UserPen className="h-4 w-4" />
+                                            Edit Profile
+                                        </button>
+                                        <button
                                             onClick={() => { toggleTheme(); setUserMenuOpen(false); }}
                                             className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-accent transition-colors"
                                         >
@@ -253,6 +273,12 @@ export default function AdminLayout({ children }) {
                     </main>
                 </div>
             </div>
-        </ToastProvider>
+
+            {/* Profile Modal */}
+            <ProfileModal
+                isOpen={showProfileModal}
+                onClose={() => setShowProfileModal(false)}
+            />
+        </>
     );
 }
