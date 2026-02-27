@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import styles from '../auth.module.css';
+import { UtensilsCrossed, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -37,17 +38,21 @@ export default function LoginPage() {
     };
 
     return (
-        <div className={styles.container}>
-            <div className={styles.card}>
-                <div className={styles.logo}>
-                    <div className={styles.logoMark}>M</div>
-                    <span className={styles.logoText}>MehfilCart</span>
+        <div className="flex min-h-screen flex-col items-center justify-center bg-secondary/30 p-4">
+            <div className="w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card p-8 shadow-lg">
+                <div className="mb-8 flex flex-col items-center justify-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+                        <UtensilsCrossed className="h-6 w-6" />
+                    </div>
+                    <span className="text-2xl font-bold tracking-tight text-foreground">MehfilCart</span>
                 </div>
 
-                <h1 className={styles.title}>Welcome</h1>
-                <p className={styles.subtitle}>Enter your phone number to receive a one-time password.</p>
+                <div className="mb-8 space-y-2 text-center">
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Welcome Back</h1>
+                    <p className="text-sm text-muted-foreground">Enter your phone number to receive a secure one-time password.</p>
+                </div>
 
-                <form className={styles.form} onSubmit={handleSubmit}>
+                <form className="space-y-6" onSubmit={handleSubmit}>
                     <Input
                         id="phone"
                         label="Phone Number"
@@ -56,15 +61,20 @@ export default function LoginPage() {
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         error={error}
+                        required
                         autoFocus
+                        className="text-lg tracking-wide"
                     />
-                    <Button type="submit" fullWidth loading={loading} size="lg">
+                    <Button type="submit" fullWidth loading={loading} size="lg" className="h-12 text-base">
                         Send OTP
                     </Button>
                 </form>
 
-                <div className={styles.back}>
-                    <a href="/">← Back to home</a>
+                <div className="mt-8 text-center">
+                    <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to home
+                    </Link>
                 </div>
             </div>
         </div>

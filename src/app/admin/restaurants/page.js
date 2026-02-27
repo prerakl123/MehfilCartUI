@@ -7,8 +7,8 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
-import styles from './restaurants.module.css';
 import { useAuthStore } from '@/store/authStore';
+import { Plus, Store, MapPin, Phone, Edit2, Trash2 } from 'lucide-react';
 
 export default function RestaurantsPage() {
     const toast = useToast();
@@ -99,7 +99,12 @@ export default function RestaurantsPage() {
     };
 
     if (loading) {
-        return <div className={styles.page}><p>Loading restaurants...</p></div>;
+        return (
+            <div className="flex h-[50vh] flex-col items-center justify-center gap-4">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                <p className="text-sm font-medium text-muted-foreground">Loading restaurants...</p>
+            </div>
+        );
     }
 
     if (!isAuthenticated || role !== 'SUPER_ADMIN') {
@@ -107,47 +112,84 @@ export default function RestaurantsPage() {
     }
 
     return (
-        <div className={styles.page}>
-            <div className={styles.header}>
-                <h1 className={styles.title}>Restaurants</h1>
-                <Button onClick={openCreate}>+ New Restaurant</Button>
+        <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">Restaurants</h1>
+                    <p className="text-sm text-muted-foreground mt-1">Manage all restaurant locations and details.</p>
+                </div>
+                <Button onClick={openCreate} className="w-full sm:w-auto">
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Restaurant
+                </Button>
             </div>
 
             {restaurants.length === 0 ? (
-                <div className={styles.emptyState}>
-                    <div className={styles.emptyIcon}>🍽️</div>
-                    <div className={styles.emptyTitle}>No restaurants yet</div>
-                    <p>Create your first restaurant to get started.</p>
-                    <Button onClick={openCreate} style={{ marginTop: 'var(--space-4)' }}>
-                        + Create Restaurant
+                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card py-24 text-center">
+                    <Store className="mb-4 h-12 w-12 text-muted-foreground/50" />
+                    <h2 className="text-xl font-semibold text-foreground">No restaurants yet</h2>
+                    <p className="mb-6 mt-2 max-w-sm text-sm text-muted-foreground">
+                        Create your first restaurant to start managing its menu, tables, and orders.
+                    </p>
+                    <Button onClick={openCreate}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Restaurant
                     </Button>
                 </div>
             ) : (
-                <div className={styles.list}>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {restaurants.map((r) => (
-                        <div key={r.id} className={styles.card} onClick={() => openEdit(r)}>
-                            <div className={styles.cardHeader}>
-                                <div>
-                                    <div className={styles.cardName}>{r.name}</div>
-                                    <div className={styles.cardSlug}>/{r.slug}</div>
+                        <div
+                            key={r.id}
+                            className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-card p-6 shadow-sm transition-all hover:border-primary/50 hover:shadow-md cursor-pointer"
+                            onClick={() => openEdit(r)}
+                        >
+                            <div>
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1 overflow-hidden">
+                                        <h3 className="truncate text-lg font-semibold tracking-tight text-foreground transition-colors group-hover:text-primary">
+                                            {r.name}
+                                        </h3>
+                                        <p className="truncate text-sm text-muted-foreground">
+                                            /{r.slug}
+                                        </p>
+                                    </div>
+                                    <Badge variant={r.is_active ? 'success' : 'neutral'} className="shrink-0">
+                                        {r.is_active ? 'Active' : 'Inactive'}
+                                    </Badge>
                                 </div>
-                                <Badge variant={r.is_active ? 'success' : 'neutral'}>
-                                    {r.is_active ? 'Active' : 'Inactive'}
-                                </Badge>
+                                <div className="mb-4 mt-6 flex flex-col gap-2.5">
+                                    {r.address && (
+                                        <div className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                                            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-foreground/70" />
+                                            <span className="line-clamp-2">{r.address}</span>
+                                        </div>
+                                    )}
+                                    {r.phone && (
+                                        <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                                            <Phone className="h-4 w-4 shrink-0 text-foreground/70" />
+                                            <span className="truncate">{r.phone}</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                            <div className={styles.cardDetails}>
-                                {r.address && (
-                                    <div className={styles.cardRow}>📍 {r.address}</div>
-                                )}
-                                {r.phone && (
-                                    <div className={styles.cardRow}>📞 {r.phone}</div>
-                                )}
-                            </div>
-                            <div className={styles.cardActions}>
-                                <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(r); }}>
+                            <div className="mt-4 flex items-center justify-end gap-2 border-t border-border pt-4">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8"
+                                    onClick={(e) => { e.stopPropagation(); openEdit(r); }}
+                                >
+                                    <Edit2 className="mr-1.5 h-3.5 w-3.5" />
                                     Edit
                                 </Button>
-                                <Button variant="ghost" size="sm" style={{ color: 'var(--color-error)' }} onClick={(e) => handleDelete(r.id, e)}>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                    onClick={(e) => handleDelete(r.id, e)}
+                                >
+                                    <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                                     Delete
                                 </Button>
                             </div>
@@ -170,7 +212,7 @@ export default function RestaurantsPage() {
                     </>
                 }
             >
-                <div className={styles.formGrid}>
+                <div className="grid gap-4 py-4">
                     <Input
                         id="name"
                         label="Restaurant Name"

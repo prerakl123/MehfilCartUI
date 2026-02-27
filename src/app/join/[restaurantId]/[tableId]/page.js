@@ -5,7 +5,6 @@ import { useRouter, useParams } from 'next/navigation';
 import { useSession } from '@/hooks/useSession';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from '@/components/ui/Toast';
-import sharedStyles from '@/app/admin/shared.module.css';
 import Button from '@/components/ui/Button';
 
 export default function JoinTablePage() {
@@ -85,15 +84,15 @@ export default function JoinTablePage() {
     }, [isAuthenticated, tableId, restaurantId, router, toast, createSession, getActiveSessionForTable, joinSession]);
 
     return (
-        <div className={sharedStyles.page} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', textAlign: 'center' }}>
-            <div style={{ maxWidth: '400px', padding: '2rem', background: 'var(--color-bg)', borderRadius: '1rem', border: '1px solid var(--color-border)' }}>
-                <h2 style={{ marginBottom: '1rem' }}>Joining Table</h2>
-                <p style={{ marginBottom: '2rem', color: 'var(--color-text-muted)' }}>{status}</p>
+        <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-center">
+            <div className="w-full max-w-[400px] rounded-2xl border border-border bg-card p-8 shadow-sm">
+                <h2 className="mb-4 text-2xl font-bold tracking-tight text-foreground">Joining Table</h2>
+                <p className="mb-8 text-sm text-muted-foreground">{status}</p>
                 {waiting && (
-                    <div style={{ marginTop: '1rem' }}>
-                        <div className="spinner" style={{ marginBottom: '1rem' }} />
-                        <p style={{ fontSize: '0.9rem', color: 'var(--color-primary)' }}>The host will receive your request shortly.</p>
-                        <Button style={{ marginTop: '2rem' }} variant="secondary" onClick={() => router.push('/')}>
+                    <div className="mt-4 flex flex-col items-center">
+                        <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                        <p className="text-sm font-medium text-primary">The host will receive your request shortly.</p>
+                        <Button className="mt-8 w-full" variant="secondary" onClick={() => router.push('/')}>
                             Cancel
                         </Button>
                     </div>
