@@ -20,6 +20,7 @@ import {
 import SessionManagementModal from '@/components/session/SessionManagementModal';
 import { useSession } from '@/hooks/useSession';
 import { useToast } from '@/components/ui/Toast';
+import { APP_CONFIG } from '@/constants/config';
 
 export default function ConsumerMenuPage() {
     const params = useParams();
@@ -33,9 +34,11 @@ export default function ConsumerMenuPage() {
     const [activeCategory, setActiveCategory] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [showAuthModal, setShowAuthModal] = useState(false);
-    const [cartItems, setCartItems] = useState({});
     
-    // Session and UI state
+    // Remote Cart and UI state
+    const [remoteCart, setRemoteCart] = useState({ items: [], total: 0, item_count: 0 });
+    const [paymentMethod, setPaymentMethod] = useState('Pay Later');
+
     const { getMyActiveSession, fetchSession, handleMember, transferHostToMember, leaveSession: apiLeaveSession } = useSession();
     const { user } = useAuthStore();
     const toast = useToast();
@@ -55,15 +58,59 @@ export default function ConsumerMenuPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [restaurantId, isAuthenticated]);
 
-    // Polling for session updates
+    // We removed polling in favor of WebSocket 'session:updated' broadcasts
+
+    // WebSocket Cart Real-time Sync
     useEffect(() => {
-        let interval;
-        if (activeSession) {
-            interval = setInterval(() => {
-                refreshSession(activeSession.id);
-            }, 10000);
+        if (!activeSession?.id) return;
+        
+        let socket;
+        
+        const initCart = async () => {
+             try {
+                 const data = await api.get(`/sessions/${activeSession.id}/cart`);
+                 setRemoteCart(data);
+             } catch(err) {
+                 console.error('Failed to init cart:', err);
+             }
+        };
+        initCart();
+
+        const token = localStorage.getItem('access_token');
+        if (token) {
+             const wsUrl = APP_CONFIG.SOCKET_URL.replace('http', 'ws') + `/api/v1/ws?token=${token}`;
+             socket = new WebSocket(wsUrl);
+             
+             socket.onopen = () => {
+                 socket.send(JSON.stringify({ event: 'join:session', data: { session_id: activeSession.id } }));
+             };
+             
+             socket.onmessage = (event) => {
+                 try {
+                     const message = JSON.parse(event.data);
+                     if (message.event === 'cart:updated') {
+                         setRemoteCart(message.data);
+                     } else if (message.event === 'session:updated') {
+                         if (message.data.status === 'CLOSED' || message.data.status === 'COMPLETED') {
+                             setActiveSession(null);
+                             toast.error('Session has been closed.');
+                             router.push('/');
+                         } else {
+                             setActiveSession(message.data);
+                         }
+                     }
+                 } catch (e) {
+                     console.error('Invalid WS message', e);
+                 }
+             };
         }
-        return () => clearInterval(interval);
+        
+        return () => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ event: 'leave:session', data: { session_id: activeSession.id } }));
+                socket.close();
+            }
+        };
     }, [activeSession?.id]);
 
     const checkActiveSession = async () => {
@@ -121,26 +168,49 @@ export default function ConsumerMenuPage() {
         return items;
     }, [menu, activeCategory, searchQuery]);
 
-    const cartCount = Object.values(cartItems).reduce((sum, qty) => sum + qty, 0);
+    const cartCount = remoteCart.item_count || 0;
+    const totalCartPrice = remoteCart.total || 0;
 
-    const addToCart = (itemId) => {
-        if (!isAuthenticated) {
-            setShowAuthModal(true);
-            return;
-        }
-        setCartItems((prev) => ({ ...prev, [itemId]: (prev[itemId] || 0) + 1 }));
+    const getMenuQty = (menuItemId) => {
+        if (!remoteCart.items) return 0;
+        return remoteCart.items
+            .filter(i => i.menu_item_id === menuItemId)
+            .reduce((sum, item) => sum + item.quantity, 0);
     };
 
-    const removeFromCart = (itemId) => {
-        setCartItems((prev) => {
-            const next = { ...prev };
-            if (next[itemId] > 1) {
-                next[itemId] -= 1;
+    const handleAddMenuQty = async (menuItemId) => {
+        if (!isAuthenticated) return setShowAuthModal(true);
+        if (!activeSession) return toast.error('Join table first');
+        
+        const existing = remoteCart.items.find(i => i.menu_item_id === menuItemId && i.added_by_id === user?.id);
+        try {
+            if (existing) {
+                await api.patch(`/sessions/${activeSession.id}/cart/items/${existing.id}`, { quantity: existing.quantity + 1 });
             } else {
-                delete next[itemId];
+                await api.post(`/sessions/${activeSession.id}/cart/items`, { menu_item_id: menuItemId, quantity: 1 });
             }
-            return next;
-        });
+        } catch(err) {
+            toast.error('Failed to update cart');
+        }
+    };
+
+    const handleMinusMenuQty = async (menuItemId) => {
+        if (!isAuthenticated || !activeSession) return;
+        
+        const existing = remoteCart.items.find(i => i.menu_item_id === menuItemId && i.added_by_id === user?.id);
+        if (!existing) {
+            toast.error("You can only remove items you added.");
+            return;
+        }
+        try {
+            if (existing.quantity > 1) {
+                await api.patch(`/sessions/${activeSession.id}/cart/items/${existing.id}`, { quantity: existing.quantity - 1 });
+            } else {
+                await api.delete(`/sessions/${activeSession.id}/cart/items/${existing.id}`);
+            }
+        } catch(err) {
+            toast.error('Failed to update cart');
+        }
     };
 
     const handlePlaceOrder = async () => {
@@ -151,33 +221,19 @@ export default function ConsumerMenuPage() {
         
         setIsSubmittingOrder(true);
         try {
-            const items = Object.entries(cartItems).map(([item_id, quantity]) => ({
-                menu_item_id: item_id,
-                quantity: quantity
-            }));
-            
-            await api.post('/orders', {
-                session_id: activeSession.id,
-                items: items
+            await api.post(`/sessions/${activeSession.id}/orders`, {
+                special_notes: `[Payment Method: ${paymentMethod}]`
             });
             
             toast.success('Order placed successfully!');
-            setCartItems({});
             setShowCart(false);
+            setRemoteCart({ items: [], total: 0, item_count: 0 });
         } catch (error) {
             toast.error('Failed to place order: ' + (error.data?.detail || error.message));
         } finally {
             setIsSubmittingOrder(false);
         }
     };
-
-    const totalCartPrice = useMemo(() => {
-        if (!menu?.items) return 0;
-        return Object.entries(cartItems).reduce((total, [itemId, qty]) => {
-            const item = menu.items.find(i => i.id === itemId);
-            return total + (item ? item.price * qty : 0);
-        }, 0);
-    }, [cartItems, menu]);
 
     const handleLeaveSession = async () => {
         if (!activeSession) return;
@@ -385,19 +441,19 @@ export default function ConsumerMenuPage() {
 
                                 {/* Add to cart controls */}
                                 <div className="flex shrink-0 flex-col items-center justify-end gap-1">
-                                    {cartItems[item.id] ? (
+                                    {getMenuQty(item.id) > 0 ? (
                                         <div className="flex items-center gap-2 rounded-lg border border-primary bg-primary/5 px-1">
                                             <button
-                                                onClick={() => removeFromCart(item.id)}
+                                                onClick={() => handleMinusMenuQty(item.id)}
                                                 className="rounded p-1 text-primary hover:bg-primary/10 transition-colors"
                                             >
                                                 <Minus className="h-4 w-4" />
                                             </button>
                                             <span className="w-6 text-center text-sm font-bold text-primary">
-                                                {cartItems[item.id]}
+                                                {getMenuQty(item.id)}
                                             </span>
                                             <button
-                                                onClick={() => addToCart(item.id)}
+                                                onClick={() => handleAddMenuQty(item.id)}
                                                 className="rounded p-1 text-primary hover:bg-primary/10 transition-colors"
                                             >
                                                 <Plus className="h-4 w-4" />
@@ -405,7 +461,7 @@ export default function ConsumerMenuPage() {
                                         </div>
                                     ) : (
                                         <button
-                                            onClick={() => addToCart(item.id)}
+                                            onClick={() => handleAddMenuQty(item.id)}
                                             className="flex items-center gap-1 rounded-lg border border-primary bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
                                         >
                                             <Plus className="h-4 w-4" />
@@ -464,37 +520,44 @@ export default function ConsumerMenuPage() {
                         </div>
                         
                         <div className="flex-1 overflow-y-auto space-y-4">
-                            {cartCount === 0 ? (
+                            {remoteCart.items.length === 0 ? (
                                 <div className="text-center py-10 text-muted-foreground">
                                     <ShoppingCart className="h-12 w-12 mx-auto mb-4 opacity-20" />
                                     <p>Your cart is empty.</p>
                                 </div>
                             ) : (
-                                Object.entries(cartItems).map(([itemId, qty]) => {
-                                    const item = menu?.items?.find(i => i.id === itemId);
-                                    if (!item) return null;
+                                remoteCart.items.map((cartItem) => {
                                     return (
-                                        <div key={itemId} className="flex justify-between items-center bg-muted/30 p-3 rounded-lg border border-border">
+                                        <div key={cartItem.id} className="flex justify-between items-center bg-muted/30 p-3 rounded-lg border border-border">
                                             <div className="flex-1 truncate">
-                                                <p className="font-semibold text-sm truncate">{item.name}</p>
-                                                <p className="text-xs text-primary font-bold">Rs. {(item.price * qty).toFixed(2)}</p>
+                                                <p className="font-semibold text-sm truncate">{cartItem.menu_item_name}</p>
+                                                <p className="text-xs text-primary font-bold">Rs. {(cartItem.menu_item_price * cartItem.quantity).toFixed(2)}</p>
+                                                <p className="text-[10px] text-muted-foreground mt-0.5">Added by: {cartItem.added_by_name || 'Guest'}</p>
                                             </div>
                                             <div className="flex items-center gap-2 rounded-lg border border-primary bg-primary/5 px-1 ml-2 shrink-0">
-                                                <button
-                                                    onClick={() => removeFromCart(item.id)}
-                                                    className="rounded p-1 text-primary hover:bg-primary/10 transition-colors"
-                                                >
-                                                    <Minus className="h-3 w-3" />
-                                                </button>
-                                                <span className="w-4 text-center text-xs font-bold text-primary">
-                                                    {qty}
-                                                </span>
-                                                <button
-                                                    onClick={() => addToCart(item.id)}
-                                                    className="rounded p-1 text-primary hover:bg-primary/10 transition-colors"
-                                                >
-                                                    <Plus className="h-3 w-3" />
-                                                </button>
+                                                {cartItem.added_by_id === user?.id ? (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleMinusMenuQty(cartItem.menu_item_id)}
+                                                        className="rounded p-1 text-primary hover:bg-primary/10 transition-colors"
+                                                    >
+                                                        <Minus className="h-3 w-3" />
+                                                    </button>
+                                                    <span className="w-4 text-center text-xs font-bold text-primary">
+                                                        {cartItem.quantity}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => handleAddMenuQty(cartItem.menu_item_id)}
+                                                        className="rounded p-1 text-primary hover:bg-primary/10 transition-colors"
+                                                    >
+                                                        <Plus className="h-3 w-3" />
+                                                    </button>
+                                                </>
+                                                ) : (
+                                                    <span className="px-2 text-xs font-bold text-primary">
+                                                        Qty: {cartItem.quantity}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     );
@@ -502,19 +565,39 @@ export default function ConsumerMenuPage() {
                             )}
                         </div>
                         
-                        {cartCount > 0 && (
+                        {remoteCart.item_count > 0 && (
                             <div className="pt-4 border-t border-border mt-4">
                                 <div className="flex justify-between mb-4">
                                     <span className="font-bold">Total:</span>
-                                    <span className="font-bold text-primary">Rs. {totalCartPrice.toFixed(2)}</span>
+                                    <span className="font-bold text-primary">Rs. {remoteCart.total.toFixed(2)}</span>
                                 </div>
-                                {activeSession ? (
+                                
+                                {isHost && (
+                                    <div className="mb-4">
+                                        <label className="text-xs font-medium text-muted-foreground block mb-1">Payment Method</label>
+                                        <div className="relative">
+                                            <ChevronDown className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                                            <select 
+                                                value={paymentMethod} 
+                                                onChange={(e) => setPaymentMethod(e.target.value)}
+                                                className="w-full appearance-none rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+                                            >
+                                                <option value="Pay Later">Pay Later (Post-meal)</option>
+                                                <option value="UPI">UPI Payment</option>
+                                                <option value="Credit Card">Credit Card</option>
+                                                <option value="Cash">Cash</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {isHost ? (
                                     <Button className="w-full" onClick={handlePlaceOrder} disabled={isSubmittingOrder}>
                                         {isSubmittingOrder ? 'Placing Order...' : 'Place Order'}
                                     </Button>
                                 ) : (
-                                    <Button className="w-full" onClick={() => router.push(`/join/${restaurantId}/${tableId}`)}>
-                                        Join Table to Order
+                                    <Button className="w-full" variant="outline" disabled>
+                                        Only Host Can Place Order
                                     </Button>
                                 )}
                             </div>
