@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useToast } from '@/components/ui/Toast';
 import Button from '@/components/ui/Button';
 import AuthModal from '@/components/auth/AuthModal';
-import { LogIn, Eye, QrCode } from 'lucide-react';
+import { LogIn, Eye, QrCode, RefreshCw } from 'lucide-react';
 
 export default function JoinTablePage() {
     const router = useRouter();
@@ -136,6 +136,20 @@ export default function JoinTablePage() {
         router.push('/');
     };
 
+    const handleRefreshStatus = async () => {
+        try {
+            const mySession = await getMyActiveSession();
+            if (mySession && mySession.table_id === tableId) {
+                toast.success('You have been accepted!');
+                router.push(`/menu/${restaurantId}/${tableId}`);
+            } else {
+                toast.info('Still waiting for host approval...');
+            }
+        } catch (err) {
+            toast.info('Still waiting for host approval...');
+        }
+    };
+
     if (existingSession) {
         return (
             <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-center">
@@ -210,9 +224,15 @@ export default function JoinTablePage() {
                     <div className="mt-4 flex flex-col items-center">
                         <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
                         <p className="text-sm font-medium text-primary">The host will receive your request shortly.</p>
-                        <Button className="mt-8 w-full" variant="secondary" onClick={() => router.push('/')}>
-                            Cancel
-                        </Button>
+                        <div className="mt-8 flex w-full flex-col gap-3">
+                            <Button className="w-full gap-2" variant="outline" onClick={handleRefreshStatus}>
+                                <RefreshCw className="h-4 w-4" />
+                                Refresh Status
+                            </Button>
+                            <Button className="w-full" variant="secondary" onClick={() => router.push('/')}>
+                                Cancel
+                            </Button>
+                        </div>
                     </div>
                 )}
             </div>

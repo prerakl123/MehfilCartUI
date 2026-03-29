@@ -15,7 +15,7 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import {
     Search, Filter, ShoppingCart, Plus, Minus, ArrowLeft,
-    Leaf, Flame, LogIn, ChevronDown, Users, X
+    Leaf, Flame, LogIn, ChevronDown, Users, X, Check
 } from 'lucide-react';
 import SessionManagementModal from '@/components/session/SessionManagementModal';
 import { useSession } from '@/hooks/useSession';
@@ -47,6 +47,25 @@ export default function ConsumerMenuPage() {
     const [showSessionModal, setShowSessionModal] = useState(false);
     const [showCart, setShowCart] = useState(false);
     const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+    const [acceptedItems, setAcceptedItems] = useState(new Set());
+
+    const groupedCartItems = useMemo(() => {
+        if (!remoteCart.items) return {};
+        const groups = {};
+        remoteCart.items.forEach(item => {
+            const name = item.added_by_name || 'Guest';
+            if (!groups[name]) groups[name] = [];
+            groups[name].push(item);
+        });
+        return groups;
+    }, [remoteCart.items]);
+
+    const unacceptedOtherItemsCount = useMemo(() => {
+        if (!remoteCart.items) return 0;
+        return remoteCart.items.filter(item => 
+            item.added_by_id !== user?.id && !acceptedItems.has(item.id)
+        ).length;
+    }, [remoteCart.items, acceptedItems, user?.id]);
 
     useEffect(() => { initialize(); }, [initialize]);
 
@@ -153,7 +172,7 @@ export default function ConsumerMenuPage() {
     // Filtered items based on category and search
     const filteredItems = useMemo(() => {
         if (!menu?.items) return [];
-        let items = menu.items.filter((item) => item.is_available !== false);
+        let items = menu.items; // Include unavailable items
         if (activeCategory !== 'all') {
             items = items.filter((item) => item.category_id === activeCategory);
         }
@@ -228,11 +247,56 @@ export default function ConsumerMenuPage() {
             toast.success('Order placed successfully!');
             setShowCart(false);
             setRemoteCart({ items: [], total: 0, item_count: 0 });
+            setAcceptedItems(new Set());
         } catch (error) {
             toast.error('Failed to place order: ' + (error.data?.detail || error.message));
         } finally {
             setIsSubmittingOrder(false);
         }
+    };
+
+    const handleRejectItem = async (cartItemId) => {
+        try {
+            await api.delete(`/sessions/${activeSession.id}/cart/items/${cartItemId}`);
+            toast.success('Item rejected');
+            setAcceptedItems(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(cartItemId);
+                return newSet;
+            });
+        } catch(err) {
+            toast.error('Failed to reject item');
+        }
+    };
+
+    const handleRejectAllPerson = async (personName, items) => {
+        try {
+            await Promise.all(items.map(item => api.delete(`/sessions/${activeSession.id}/cart/items/${item.id}`)));
+            toast.success(`Rejected all items for ${personName}`);
+            setAcceptedItems(prev => {
+                const newSet = new Set(prev);
+                items.forEach(item => newSet.delete(item.id));
+                return newSet;
+            });
+        } catch(err) {
+            toast.error('Failed to reject some items');
+        }
+    };
+
+    const handleAcceptItem = (cartItemId) => {
+        setAcceptedItems(prev => {
+            const newSet = new Set(prev);
+            newSet.add(cartItemId);
+            return newSet;
+        });
+    };
+
+    const handleAcceptAllPerson = (items) => {
+        setAcceptedItems(prev => {
+            const newSet = new Set(prev);
+            items.forEach(item => newSet.add(item.id));
+            return newSet;
+        });
     };
 
     const handleLeaveSession = async () => {
@@ -316,11 +380,17 @@ export default function ConsumerMenuPage() {
                 <div className="mx-auto max-w-3xl px-4 py-3">
                     <div className="flex items-center justify-between mb-3">
                         <button
-                            onClick={() => router.back()}
-                            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                            onClick={() => {
+                                if (activeSession) {
+                                    handleLeaveSession();
+                                } else {
+                                    router.push('/');
+                                }
+                            }}
+                            className="flex items-center gap-1.5 text-sm font-medium text-destructive hover:text-destructive/80 transition-colors"
                         >
                             <ArrowLeft className="h-4 w-4" />
-                            Back
+                            Leave
                         </button>
                         <h1 className="text-lg font-bold text-foreground">Menu</h1>
                         <div className="flex gap-2">
@@ -416,7 +486,7 @@ export default function ConsumerMenuPage() {
                         {filteredItems.map((item) => (
                             <div
                                 key={item.id}
-                                className="flex gap-4 rounded-xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+                                className={`flex gap-4 rounded-xl border p-4 shadow-sm transition-shadow hover:shadow-md ${item.is_available === false ? 'border-border/50 bg-muted/20 opacity-70' : 'border-border bg-card'}`}
                             >
                                 <div className="flex-1 min-w-0">
                                     <div className="mb-1 flex items-center gap-2">
@@ -441,7 +511,11 @@ export default function ConsumerMenuPage() {
 
                                 {/* Add to cart controls */}
                                 <div className="flex shrink-0 flex-col items-center justify-end gap-1">
-                                    {getMenuQty(item.id) > 0 ? (
+                                    {item.is_available === false ? (
+                                        <span className="bg-destructive/10 text-destructive border border-destructive/20 rounded-md px-2 py-1 text-[10px] font-semibold whitespace-nowrap">
+                                            Out of Stock
+                                        </span>
+                                    ) : getMenuQty(item.id) > 0 ? (
                                         <div className="flex items-center gap-2 rounded-lg border border-primary bg-primary/5 px-1">
                                             <button
                                                 onClick={() => handleMinusMenuQty(item.id)}
@@ -526,39 +600,94 @@ export default function ConsumerMenuPage() {
                                     <p>Your cart is empty.</p>
                                 </div>
                             ) : (
-                                remoteCart.items.map((cartItem) => {
+                                Object.entries(groupedCartItems).map(([personName, items]) => {
+                                    const allAccepted = items.every(item => acceptedItems.has(item.id));
+                                    const isSelf = items[0]?.added_by_id === user?.id;
+
                                     return (
-                                        <div key={cartItem.id} className="flex justify-between items-center bg-muted/30 p-3 rounded-lg border border-border">
-                                            <div className="flex-1 truncate">
-                                                <p className="font-semibold text-sm truncate">{cartItem.menu_item_name}</p>
-                                                <p className="text-xs text-primary font-bold">Rs. {(cartItem.menu_item_price * cartItem.quantity).toFixed(2)}</p>
-                                                <p className="text-[10px] text-muted-foreground mt-0.5">Added by: {cartItem.added_by_name || 'Guest'}</p>
-                                            </div>
-                                            <div className="flex items-center gap-2 rounded-lg border border-primary bg-primary/5 px-1 ml-2 shrink-0">
-                                                {cartItem.added_by_id === user?.id ? (
-                                                <>
-                                                    <button
-                                                        onClick={() => handleMinusMenuQty(cartItem.menu_item_id)}
-                                                        className="rounded p-1 text-primary hover:bg-primary/10 transition-colors"
-                                                    >
-                                                        <Minus className="h-3 w-3" />
-                                                    </button>
-                                                    <span className="w-4 text-center text-xs font-bold text-primary">
-                                                        {cartItem.quantity}
-                                                    </span>
-                                                    <button
-                                                        onClick={() => handleAddMenuQty(cartItem.menu_item_id)}
-                                                        className="rounded p-1 text-primary hover:bg-primary/10 transition-colors"
-                                                    >
-                                                        <Plus className="h-3 w-3" />
-                                                    </button>
-                                                </>
-                                                ) : (
-                                                    <span className="px-2 text-xs font-bold text-primary">
-                                                        Qty: {cartItem.quantity}
-                                                    </span>
+                                        <div key={personName} className="mb-4 space-y-2">
+                                            <div className="flex items-center justify-between border-b pb-1">
+                                                <h3 className="font-semibold text-sm text-foreground">
+                                                    {personName} {isSelf && '(You)'}
+                                                </h3>
+                                                {isHost && !isSelf && (
+                                                    <div className="flex items-center gap-3">
+                                                        <button 
+                                                            onClick={() => handleRejectAllPerson(personName, items)} 
+                                                            className="text-[11px] font-medium text-destructive hover:underline"
+                                                        >
+                                                            Reject All
+                                                        </button>
+                                                        {!allAccepted && (
+                                                            <button 
+                                                                onClick={() => handleAcceptAllPerson(items)} 
+                                                                className="text-[11px] font-medium text-green-600 hover:underline"
+                                                            >
+                                                                Accept All
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
+                                            {items.map((cartItem) => (
+                                                <div key={cartItem.id} className={`flex justify-between items-center bg-muted/30 p-3 rounded-lg border ${acceptedItems.has(cartItem.id) ? 'border-green-500/50 bg-green-50/50 dark:bg-green-950/20' : 'border-border'}`}>
+                                                    <div className="flex-1 truncate">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-semibold text-sm truncate">{cartItem.menu_item_name}</p>
+                                                            {acceptedItems.has(cartItem.id) && (
+                                                                <span className="text-[9px] uppercase tracking-wider bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded-sm font-bold">Accepted</span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-xs text-primary font-bold">Rs. {(cartItem.menu_item_price * cartItem.quantity).toFixed(2)}</p>
+                                                    </div>
+                                                    
+                                                    {isSelf ? (
+                                                        <div className="flex items-center gap-2 rounded-lg border border-primary bg-primary/5 px-1 ml-2 shrink-0">
+                                                            <button
+                                                                onClick={() => handleMinusMenuQty(cartItem.menu_item_id)}
+                                                                className="rounded p-1 text-primary hover:bg-primary/10 transition-colors"
+                                                            >
+                                                                <Minus className="h-3 w-3" />
+                                                            </button>
+                                                            <span className="w-4 text-center text-xs font-bold text-primary">
+                                                                {cartItem.quantity}
+                                                            </span>
+                                                            <button
+                                                                onClick={() => handleAddMenuQty(cartItem.menu_item_id)}
+                                                                className="rounded p-1 text-primary hover:bg-primary/10 transition-colors"
+                                                            >
+                                                                <Plus className="h-3 w-3" />
+                                                            </button>
+                                                        </div>
+                                                    ) : isHost ? (
+                                                        <div className="flex items-center gap-1 ml-2 shrink-0">
+                                                            <span className="px-2 text-xs font-bold text-primary mr-2">
+                                                                Qty: {cartItem.quantity}
+                                                            </span>
+                                                            <button 
+                                                                onClick={() => handleRejectItem(cartItem.id)}
+                                                                className="rounded-lg p-1.5 text-destructive hover:bg-destructive/10 transition-colors border border-transparent hover:border-destructive/20"
+                                                                title="Reject"
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </button>
+                                                            {!acceptedItems.has(cartItem.id) && (
+                                                                <button 
+                                                                    onClick={() => handleAcceptItem(cartItem.id)}
+                                                                    className="rounded-lg p-1.5 text-green-600 hover:bg-green-600/10 transition-colors border border-transparent hover:border-green-600/20"
+                                                                    title="Accept"
+                                                                >
+                                                                    <Check className="h-4 w-4" />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="px-2 text-xs font-bold text-primary">
+                                                            Qty: {cartItem.quantity}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ))}
                                         </div>
                                     );
                                 })
@@ -592,8 +721,13 @@ export default function ConsumerMenuPage() {
                                 )}
 
                                 {isHost ? (
-                                    <Button className="w-full" onClick={handlePlaceOrder} disabled={isSubmittingOrder}>
-                                        {isSubmittingOrder ? 'Placing Order...' : 'Place Order'}
+                                    <Button 
+                                        className="w-full" 
+                                        onClick={handlePlaceOrder} 
+                                        disabled={isSubmittingOrder || unacceptedOtherItemsCount > 0}
+                                        title={unacceptedOtherItemsCount > 0 ? "Accept all items to place order" : ""}
+                                    >
+                                        {isSubmittingOrder ? 'Placing Order...' : (unacceptedOtherItemsCount > 0 ? `Review Items First (${unacceptedOtherItemsCount})` : 'Place Order')}
                                     </Button>
                                 ) : (
                                     <Button className="w-full" variant="outline" disabled>
