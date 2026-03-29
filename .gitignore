@@ -41,6 +41,5 @@ yarn-error.log*
 next-env.d.ts
 
 # workspace
-package-lock.json
 *.code-workspace
 .vscode/
