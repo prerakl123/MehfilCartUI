@@ -1,8 +1,10 @@
 /**
  * API client -- fetch wrapper with auth token injection and 401 refresh handling.
+ * When the refresh token itself is expired/invalid, the user is forcefully logged out.
  */
 
 import { APP_CONFIG } from '@/constants/config';
+import { getAuthStore } from '@/store/authStore';
 
 const BASE_URL = APP_CONFIG.API_BASE_URL;
 
@@ -48,19 +50,25 @@ async function request(endpoint, options = {}) {
             const refreshRes = await fetch(buildUrl('/auth/refresh'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include' // Important for sending the httpOnly refresh_token cookie
+                credentials: 'include'
             });
 
             if (refreshRes.ok) {
                 const refreshData = await refreshRes.json();
                 localStorage.setItem('access_token', refreshData.access_token);
 
-                // Retry the original request
+                // Retry the original request with the new access token
                 config.headers['Authorization'] = `Bearer ${refreshData.access_token}`;
                 response = await fetch(buildUrl(endpoint), config);
+            } else {
+                // Refresh token is expired or invalid -- force a full logout
+                await getAuthStore().forceLogout();
+                return;
             }
         } catch (e) {
-            console.error("Token refresh failed", e);
+            console.error('Token refresh failed', e);
+            await getAuthStore().forceLogout();
+            return;
         }
     }
 

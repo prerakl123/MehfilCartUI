@@ -1,6 +1,10 @@
 /**
  * Auth store -- Zustand store for authentication state.
  * Manages tokens, user info, role, restaurant context, and auth lifecycle.
+ *
+ * Exports:
+ *   useAuthStore  -- React hook for component usage
+ *   getAuthStore  -- Direct store accessor for use outside React (e.g. api.js)
  */
 
 import { create } from 'zustand';
@@ -87,4 +91,22 @@ export const useAuthStore = create((set, get) => ({
         localStorage.removeItem('restaurant_id');
         set({ user: null, role: null, restaurantId: null, isAuthenticated: false });
     },
+
+    /**
+     * Force logout without calling the backend -- used when the refresh token
+     * itself is expired or invalid. Clears local state and redirects to /login.
+     */
+    forceLogout: () => {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('role');
+        localStorage.removeItem('restaurant_id');
+        set({ user: null, role: null, restaurantId: null, isAuthenticated: false });
+        if (typeof window !== 'undefined') {
+            window.location.replace('/login');
+        }
+    },
 }));
+
+/** Direct store accessor for use outside React components (e.g. the API client). */
+export const getAuthStore = () => useAuthStore.getState();
