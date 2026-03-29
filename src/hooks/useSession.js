@@ -22,6 +22,19 @@ export function useSession() {
         }
     };
 
+    /** Get user's active session */
+    const getMyActiveSession = async () => {
+        try {
+            const data = await api.get('/sessions/my/active');
+            return data;
+        } catch (err) {
+            if (err.status !== 404) {
+               console.error('Failed to get active session:', err);
+            }
+            throw err;
+        }
+    };
+
     /** Get active session by table */
     const getActiveSessionForTable = async (tableId) => {
         try {
@@ -95,15 +108,41 @@ export function useSession() {
         }
     };
 
+    /** Leave session */
+    const leaveSession = async (sessionId) => {
+        try {
+            await api.post(`/sessions/${sessionId}/leave`);
+            setSessionData(null);
+        } catch (err) {
+            console.error('Failed to leave session:', err);
+            throw err;
+        }
+    };
+
+    /** Transfer host */
+    const transferHostToMember = async (sessionId, newHostId) => {
+        try {
+            const data = await api.post(`/sessions/${sessionId}/transfer-host`, { new_host_id: newHostId });
+            setSessionData(data);
+            return data;
+        } catch (err) {
+            console.error('Failed to transfer host:', err);
+            throw err;
+        }
+    };
+
     return {
         sessionData,
         loading,
         createSession,
+        getMyActiveSession,
         getActiveSessionForTable,
         fetchSession,
         joinSession,
         handleMember,
         updateSession,
         closeSession,
+        leaveSession,
+        transferHostToMember,
     };
 }

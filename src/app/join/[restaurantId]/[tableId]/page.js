@@ -14,7 +14,7 @@ export default function JoinTablePage() {
     const params = useParams();
     const { restaurantId, tableId } = params;
 
-    const { createSession, getActiveSessionForTable, joinSession } = useSession();
+    const { createSession, getActiveSessionForTable, joinSession, getMyActiveSession, leaveSession } = useSession();
     const { isAuthenticated } = useAuthStore();
     const toast = useToast();
 
@@ -22,6 +22,7 @@ export default function JoinTablePage() {
     const [waiting, setWaiting] = useState(false);
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showChoiceScreen, setShowChoiceScreen] = useState(false);
+    const [existingSession, setExistingSession] = useState(null);
 
     // Prevent multiple API calls
     const hasRun = useRef(false);
@@ -40,9 +41,30 @@ export default function JoinTablePage() {
 
         hasRun.current = true;
         setShowChoiceScreen(false);
-        handleJoinFlow();
+        checkAndHandleJoin();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated]);
+
+    const checkAndHandleJoin = async () => {
+        try {
+            setStatus('Checking active sessions...');
+            const mySession = await getMyActiveSession();
+            if (mySession) {
+                if (mySession.table_id === tableId) {
+                    toast.success('You are already part of this session.');
+                    router.push(`/menu/${restaurantId}/${tableId}`);
+                    return;
+                } else {
+                    setExistingSession(mySession);
+                    setStatus('');
+                    return;
+                }
+            }
+        } catch (err) {
+            // No active session, continue normal join
+        }
+        handleJoinFlow();
+    };
 
     const handleJoinFlow = async () => {
         try {
@@ -75,8 +97,16 @@ export default function JoinTablePage() {
             setStatus('Request sent! Waiting for host approval...');
             toast.success('Requested to join the table.');
         } catch (joinErr) {
-            toast.error(joinErr.data?.detail || joinErr.message || 'Failed to join table');
-            setStatus('Failed to join the table.');
+            if (joinErr.status === 409 && joinErr.data?.detail?.includes('pending')) {
+                setWaiting(true);
+                setStatus('Request already pending! Waiting for host approval...');
+            } else if (joinErr.status === 409 && joinErr.data?.detail?.includes('Already a member')) {
+                toast.success('You are already a member of this session.');
+                router.push(`/menu/${restaurantId}/${tableId}`);
+            } else {
+                toast.error(joinErr.data?.detail || joinErr.message || 'Failed to join table');
+                setStatus('Failed to join the table.');
+            }
         }
     };
 
@@ -88,6 +118,45 @@ export default function JoinTablePage() {
     const handleViewMenuOnly = () => {
         router.push(`/menu/${restaurantId}/${tableId}`);
     };
+
+    const handleLeaveExistingAndJoin = async () => {
+        try {
+            setStatus('Leaving previous session...');
+            setExistingSession(null);
+            await leaveSession(existingSession.id);
+            toast.success('Left previous session.');
+            handleJoinFlow();
+        } catch (err) {
+            toast.error('Could not leave previous session: ' + (err.data?.detail || err.message));
+            setStatus('Error leaving previous session.');
+        }
+    };
+
+    const handleCancelJoin = () => {
+        router.push('/');
+    };
+
+    if (existingSession) {
+        return (
+            <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-center">
+                <div className="w-full max-w-[400px] rounded-2xl border border-border bg-card p-8 shadow-sm">
+                    <h2 className="mb-4 text-xl font-bold tracking-tight text-foreground text-red-500">Active Session Found</h2>
+                    <p className="mb-8 text-sm text-muted-foreground">
+                        You are already part of an active session at another table ({existingSession.table_label || 'Unknown Table'}).
+                        You must leave that session before joining this one.
+                    </p>
+                    <div className="flex flex-col gap-3">
+                        <Button size="lg" className="w-full" onClick={handleLeaveExistingAndJoin}>
+                            Leave Previous & Join New
+                        </Button>
+                        <Button variant="secondary" size="lg" className="w-full" onClick={handleCancelJoin}>
+                            Cancel
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     // Choice screen: Login vs View Menu Only
     if (showChoiceScreen && !isAuthenticated) {
