@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
+import { APP_CONFIG } from '@/constants/config';
 import { useToast } from '@/components/ui/Toast';
 import RestaurantSelector from '@/components/admin/RestaurantSelector';
 import Button from '@/components/ui/Button';
@@ -30,18 +31,41 @@ export default function OrdersPage() {
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
-    // Auto-polling interval
     useEffect(() => {
         if (!restaurantId) return;
 
         fetchOrders(restaurantId);
 
-        const interval = setInterval(() => {
-            fetchOrders(restaurantId, true); // true indicates silent refresh
-        }, 15000); // 15s polling
+        const token = localStorage.getItem('access_token');
+        let socket;
 
-        return () => clearInterval(interval);
-    }, [restaurantId]);
+        if (token) {
+            const wsUrl = APP_CONFIG.SOCKET_URL.replace('http', 'ws') + `/api/v1/ws?token=${token}`;
+            socket = new WebSocket(wsUrl);
+
+            socket.onopen = () => {
+                const joinEvent = (role === 'ADMIN' || role === 'SUPER_ADMIN') ? 'join:admin' : 'join:staff';
+                socket.send(JSON.stringify({ event: joinEvent, data: { restaurant_id: restaurantId } }));
+            };
+
+            socket.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    if (message.event === 'order:created' || message.event === 'order:updated') {
+                        fetchOrders(restaurantId, true);
+                    }
+                } catch (e) {
+                    console.error('Invalid WS message', e);
+                }
+            };
+        }
+
+        return () => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.close();
+            }
+        };
+    }, [restaurantId, role, fetchOrders]);
 
     const fetchOrders = useCallback(async (rId, silent = false) => {
         if (!rId) {
