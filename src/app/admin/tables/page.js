@@ -30,7 +30,7 @@ export default function TablesPage() {
     const [modal, setModal] = useState({ open: false, data: null });
 
     const fetchTables = useCallback(async (rId) => {
-        if (!rId) {
+        if (!rId || rId === 'global') {
             setTables([]);
             return;
         }
@@ -137,7 +137,7 @@ export default function TablesPage() {
                 </div>
             </div>
 
-            {!restaurantId ? (
+            {!restaurantId || restaurantId === 'global' ? (
                 <div className="flex h-[400px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 px-4 text-center">
                     <div className="rounded-full bg-secondary p-4 mb-4">
                         <AlertCircle className="h-8 w-8 text-muted-foreground" />

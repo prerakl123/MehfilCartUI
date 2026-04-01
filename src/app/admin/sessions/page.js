@@ -25,7 +25,7 @@ export default function SessionsPage() {
     const [refreshing, setRefreshing] = useState(false);
 
     const fetchSessions = useCallback(async (rId, silent = false) => {
-        if (!rId) {
+        if (!rId || rId === 'global') {
             setSessions([]);
             return;
         }
@@ -91,7 +91,7 @@ export default function SessionsPage() {
                 </div>
             </div>
 
-            {!restaurantId ? (
+            {!restaurantId || restaurantId === 'global' ? (
                 <div className="flex h-[400px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 px-4 text-center">
                     <div className="rounded-full bg-secondary p-4 mb-4">
                         <AlertCircle className="h-8 w-8 text-muted-foreground" />

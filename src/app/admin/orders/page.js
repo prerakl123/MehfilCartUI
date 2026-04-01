@@ -31,6 +31,25 @@ export default function OrdersPage() {
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
+    const fetchOrders = useCallback(async (rId, silent = false) => {
+        if (!rId || rId === 'global') {
+            setOrders([]);
+            return;
+        }
+        if (!silent) setLoading(true);
+        if (silent) setRefreshing(true);
+
+        try {
+            const data = await api.get(`/admin/orders/${rId}`);
+            setOrders(data);
+        } catch (err) {
+            toast.error('Failed to load live orders');
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, [toast]);
+
     useEffect(() => {
         if (!restaurantId) return;
 
@@ -66,25 +85,6 @@ export default function OrdersPage() {
             }
         };
     }, [restaurantId, role, fetchOrders]);
-
-    const fetchOrders = useCallback(async (rId, silent = false) => {
-        if (!rId) {
-            setOrders([]);
-            return;
-        }
-        if (!silent) setLoading(true);
-        if (silent) setRefreshing(true);
-
-        try {
-            const data = await api.get(`/admin/orders/${rId}`);
-            setOrders(data);
-        } catch (err) {
-            toast.error('Failed to load live orders');
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, [toast]);
 
     const updateStatus = async (orderId, newStatus) => {
         try {
@@ -147,7 +147,7 @@ export default function OrdersPage() {
                 </div>
             </div>
 
-            {!restaurantId ? (
+            {!restaurantId || restaurantId === 'global' ? (
                 <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 px-4 text-center">
                     <div className="rounded-full bg-secondary p-4 mb-4">
                         <AlertCircle className="h-8 w-8 text-muted-foreground" />

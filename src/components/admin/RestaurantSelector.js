@@ -23,11 +23,11 @@ export default function RestaurantSelector({ onSelect, className = '' }) {
         try {
             const data = await api.get('/admin/restaurants');
             setRestaurants(data);
-            // Auto-select first restaurant if none is selected
-            if (!restaurantId && data.length > 0) {
-                setRestaurantId(data[0].id);
-                onSelect?.(data[0].id);
-            } else if (restaurantId) {
+            // Auto-select Global if none is selected
+            if (!restaurantId) {
+                setRestaurantId('global');
+                onSelect?.('global');
+            } else {
                 onSelect?.(restaurantId);
             }
         } catch (err) {
@@ -62,8 +62,12 @@ export default function RestaurantSelector({ onSelect, className = '' }) {
             onChange={handleChange}
             disabled={loading}
         >
+            <option value="global" className="font-semibold text-primary">
+                Global Platform Dashboard
+            </option>
+            <option disabled>──────────</option>
             <option value="">
-                {loading ? 'Loading...' : '-- Select Restaurant --'}
+                {loading ? 'Loading restaurants...' : '-- Select a Restaurant --'}
             </option>
             {restaurants.map((r) => (
                 <option key={r.id} value={r.id}>

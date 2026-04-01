@@ -29,7 +29,7 @@ export default function StaffPage() {
     const [modal, setModal] = useState({ open: false });
 
     const fetchStaff = useCallback(async (rId) => {
-        if (!rId) {
+        if (!rId || rId === 'global') {
             setStaffList([]);
             return;
         }
@@ -109,13 +109,19 @@ export default function StaffPage() {
                 </div>
             </div>
 
-            {!restaurantId ? (
+            {!restaurantId || restaurantId === 'global' ? (
                 <div className="flex h-[400px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 px-4 text-center">
                     <div className="rounded-full bg-secondary p-4 mb-4">
                         <AlertCircle className="h-8 w-8 text-muted-foreground" />
                     </div>
-                    <h3 className="text-lg font-medium text-foreground mb-1">Select a Restaurant</h3>
-                    <p className="text-sm text-muted-foreground max-w-sm">Please select a restaurant from the dropdown above to view and manage assigned staff members.</p>
+                    <h3 className="text-lg font-medium text-foreground mb-1">
+                        {restaurantId === 'global' ? 'Select a Specific Restaurant' : 'Select a Restaurant'}
+                    </h3>
+                    <p className="text-sm text-muted-foreground max-w-sm">
+                        {restaurantId === 'global'
+                            ? 'Staff management is scoped to individual restaurants. Please select one from the dropdown.'
+                            : 'Please select a restaurant from the dropdown above to view and manage assigned staff members.'}
+                    </p>
                 </div>
             ) : loading ? (
                 <div className="flex h-[400px] flex-col items-center justify-center gap-4">
