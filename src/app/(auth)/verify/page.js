@@ -70,13 +70,18 @@ function VerifyOTPContent() {
         setLoading(true);
         try {
             const data = await verifyOTP(phone, otpString);
-            // Redirect based on role
-            if (data.role === 'SUPER_ADMIN' || data.role === 'RESTAURANT_ADMIN') {
-                router.replace('/admin');
-            } else if (data.role === 'WAITER') {
-                router.replace('/staff');
+            
+            // Redirect based on role if profile is complete
+            if (!data.profile_incomplete) {
+                if (data.role === 'SUPER_ADMIN' || data.role === 'RESTAURANT_ADMIN') {
+                    router.replace('/admin');
+                } else if (data.role === 'WAITER') {
+                    router.replace('/staff');
+                } else {
+                    router.replace('/');
+                }
             } else {
-                router.replace('/');
+                router.replace('/'); // Main page will catch the profileIncomplete flag and show modal
             }
         } catch (err) {
             setError(err.message || 'Invalid OTP. Please try again.');

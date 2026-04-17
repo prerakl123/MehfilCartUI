@@ -91,6 +91,7 @@ export default function MenuPage() {
             diet_type: formData.get('diet_type'),
             display_order: parseInt(formData.get('display_order')) || 0,
             is_available: formData.get('is_available') === 'true',
+            prep_time_minutes: parseInt(formData.get('prep_time_minutes')) || null,
         };
 
         try {
@@ -306,7 +307,11 @@ export default function MenuPage() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
+                        <Input name="prep_time_minutes" label="Prep Time (mins)" type="number" min="1" defaultValue={itemModal.data?.prep_time_minutes || ''} placeholder="e.g. 15" />
                         <Input name="display_order" label="Display Order" type="number" defaultValue={itemModal.data?.display_order || 0} />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-foreground">Status</label>
                             <select

@@ -6,12 +6,13 @@ import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/ui/Button';
 import QrScanner from '@/components/ui/QrScanner';
 import AuthModal from '@/components/auth/AuthModal';
+import ProfileCompletionModal from '@/components/auth/ProfileCompletionModal';
 import AppLogo from '@/components/ui/AppLogo';
-import { QrCode, LogIn, Eye, BookOpen, ShoppingCart, Receipt } from 'lucide-react';
+import { QrCode, LogIn, Eye, BookOpen, ShoppingCart, Receipt, LogOut } from 'lucide-react';
 
 export default function LandingPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, initialize, role } = useAuthStore();
+  const { isAuthenticated, isLoading, initialize, role, profileIncomplete, logout } = useAuthStore();
 
   const [showScanner, setShowScanner] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -22,14 +23,14 @@ export default function LandingPage() {
   }, [initialize]);
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    if (!isLoading && isAuthenticated && !profileIncomplete) {
       if (role === 'SUPER_ADMIN' || role === 'RESTAURANT_ADMIN') {
         router.replace('/admin');
       } else if (role === 'WAITER') {
         router.replace('/staff');
       }
     }
-  }, [isLoading, isAuthenticated, role, router]);
+  }, [isLoading, isAuthenticated, role, profileIncomplete, router]);
 
   const parseQrUrl = (url) => {
     try {
@@ -61,6 +62,9 @@ export default function LandingPage() {
 
   const handleAuthSuccess = (data) => {
     setShowAuthModal(false);
+    if (data.profile_incomplete) {
+        return; // the ProfileCompletionModal will automatically appear
+    }
     if (scannedData) {
       router.push(`/join/${scannedData.restaurantId}/${scannedData.tableId}`);
     } else if (data.role === 'SUPER_ADMIN' || data.role === 'RESTAURANT_ADMIN') {
@@ -147,15 +151,28 @@ export default function LandingPage() {
                   Go to Dashboard
                 </Button>
               ) : (
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="h-[52px] w-full gap-2 text-[15px] font-semibold bg-gray-50/80 border-transparent text-foreground hover:bg-gray-100 rounded-xl transition-all dark:bg-card dark:border-border dark:hover:bg-accent"
-                  onClick={() => setShowScanner(true)}
-                >
-                  <QrCode className="h-5 w-5" />
-                  Scan QR to Join
-                </Button>
+                <div className="flex flex-col gap-3">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="h-[52px] w-full gap-2 text-[15px] font-semibold bg-gray-50/80 border-transparent text-foreground hover:bg-gray-100 rounded-xl transition-all dark:bg-card dark:border-border dark:hover:bg-accent"
+                      onClick={() => setShowScanner(true)}
+                    >
+                      <QrCode className="h-5 w-5" />
+                      Scan QR to Join
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="lg"
+                      className="h-[52px] w-full gap-2 text-[15px] font-semibold text-muted-foreground hover:text-foreground"
+                      onClick={async () => {
+                          await logout();
+                      }}
+                    >
+                      <LogOut className="h-5 w-5" />
+                      Sign Out
+                    </Button>
+                </div>
               )
             ) : (
               <>
@@ -219,6 +236,8 @@ export default function LandingPage() {
         onClose={() => setShowAuthModal(false)}
         onAuthenticated={handleAuthSuccess}
       />
+      
+      <ProfileCompletionModal />
     </main>
   );
 }

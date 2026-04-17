@@ -21,6 +21,7 @@ import SessionManagementModal from '@/components/session/SessionManagementModal'
 import { useSession } from '@/hooks/useSession';
 import { useToast } from '@/components/ui/Toast';
 import { APP_CONFIG } from '@/constants/config';
+import QuickActionsBar from '@/components/session/QuickActionsBar';
 
 export default function ConsumerMenuPage() {
     const params = useParams();
@@ -604,6 +605,11 @@ export default function ConsumerMenuPage() {
                 onApprove={handleApproveMember}
                 onReject={handleRejectMember}
             />
+
+            {/* Quick Actions for Guests */}
+            {isAuthenticated && activeSession && (
+                <QuickActionsBar sessionId={activeSession.id} />
+            )}
 
             {/* Cart Drawer Output */}
             {showCart && (

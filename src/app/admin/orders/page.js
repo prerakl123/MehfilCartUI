@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/Toast';
 import RestaurantSelector from '@/components/admin/RestaurantSelector';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
+import PrepTimeIndicator from '@/components/ui/PrepTimeIndicator';
 import { useAuthStore } from '@/store/authStore';
 import { RefreshCcw, X, Clock, AlertCircle, ChefHat, Play, CheckCircle2, CopyCheck } from 'lucide-react';
 
@@ -203,6 +204,8 @@ export default function OrdersPage() {
                                                     {formatTime(order.submitted_at)}
                                                 </div>
                                             </div>
+
+                                            <PrepTimeIndicator items={order.items} status={order.status} submittedAt={order.submitted_at} />
 
                                             <div className="flex flex-col gap-2 py-1">
                                                 {order.items.map(item => (

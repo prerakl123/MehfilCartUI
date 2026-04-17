@@ -16,6 +16,7 @@ export const useAuthStore = create((set, get) => ({
     role: null,
     restaurantId: null, // The restaurant this admin/staff manages (null for SUPER_ADMIN)
     isAuthenticated: false,
+    profileIncomplete: false,
     isLoading: true,
 
     /** Initialize from localStorage on app load. */
@@ -32,6 +33,7 @@ export const useAuthStore = create((set, get) => ({
                 role,
                 restaurantId: restaurantId || null,
                 isAuthenticated: true,
+                profileIncomplete: localStorage.getItem('profile_incomplete') === 'true',
                 isLoading: false,
             });
         } else {
@@ -57,12 +59,18 @@ export const useAuthStore = create((set, get) => ({
         if (data.restaurant_id) {
             localStorage.setItem('restaurant_id', data.restaurant_id);
         }
+        if (data.profile_incomplete) {
+            localStorage.setItem('profile_incomplete', 'true');
+        } else {
+            localStorage.removeItem('profile_incomplete');
+        }
 
         set({
             user: { id: data.user_id, display_name: data.display_name },
             role: data.role,
             restaurantId: data.restaurant_id || null,
             isAuthenticated: true,
+            profileIncomplete: data.profile_incomplete || false,
         });
 
         return data;
@@ -89,7 +97,8 @@ export const useAuthStore = create((set, get) => ({
         localStorage.removeItem('user');
         localStorage.removeItem('role');
         localStorage.removeItem('restaurant_id');
-        set({ user: null, role: null, restaurantId: null, isAuthenticated: false });
+        localStorage.removeItem('profile_incomplete');
+        set({ user: null, role: null, restaurantId: null, isAuthenticated: false, profileIncomplete: false });
     },
 
     /**
@@ -101,7 +110,8 @@ export const useAuthStore = create((set, get) => ({
         localStorage.removeItem('user');
         localStorage.removeItem('role');
         localStorage.removeItem('restaurant_id');
-        set({ user: null, role: null, restaurantId: null, isAuthenticated: false });
+        localStorage.removeItem('profile_incomplete');
+        set({ user: null, role: null, restaurantId: null, isAuthenticated: false, profileIncomplete: false });
         if (typeof window !== 'undefined') {
             window.location.replace('/login');
         }
