@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
+import { useBlocking } from '@/components/ui/BlockingOverlay';
 import RestaurantSelector from '@/components/admin/RestaurantSelector';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -14,6 +15,7 @@ import { Plus, Edit2, Trash2, Users, Download, TabletSmartphone, AlertCircle } f
 
 export default function TablesPage() {
     const toast = useToast();
+    const { runBlocking } = useBlocking();
     const { user, role, restaurantId: authRestaurantId } = useAuthStore();
     const [restaurantId, setLocalRestaurantId] = useState(authRestaurantId);
 
@@ -63,35 +65,38 @@ export default function TablesPage() {
             is_active: formData.get('is_active') === 'true',
         };
 
-        try {
-            if (modal.data) {
-                // Update
-                await api.patch(`/admin/tables/${restaurantId}/${modal.data.id}`, body);
-                toast.success('Table updated');
-            } else {
-                // Create
-                await api.post(`/admin/tables/${restaurantId}`, body);
-                toast.success('Table created');
+        await runBlocking(async () => {
+            try {
+                if (modal.data) {
+                    // Update
+                    await api.patch(`/admin/tables/${restaurantId}/${modal.data.id}`, body);
+                    toast.success('Table updated');
+                } else {
+                    // Create
+                    await api.post(`/admin/tables/${restaurantId}`, body);
+                    toast.success('Table created');
+                }
+                setModal({ open: false, data: null });
+                await fetchTables(restaurantId);
+            } catch (err) {
+                toast.error(err.message || 'Failed to save table');
             }
-            setModal({ open: false, data: null });
-            fetchTables(restaurantId);
-        } catch (err) {
-            toast.error(err.message || 'Failed to save table');
-        } finally {
-            setSaving(false); // Set saving to false
-        }
+        }, modal.data ? 'Saving changes…' : 'Creating table…');
+        setSaving(false); // Set saving to false
     };
 
     const handleDelete = async (tableId, e) => {
         if (e) e.stopPropagation();
         if (!confirm('Are you sure you want to delete this table? This action cannot be undone.')) return;
-        try {
-            await api.delete(`/admin/tables/${restaurantId}/${tableId}`);
-            toast.success('Table deleted');
-            fetchTables(restaurantId);
-        } catch (err) {
-            toast.error(err.message || 'Failed to delete table');
-        }
+        await runBlocking(async () => {
+            try {
+                await api.delete(`/admin/tables/${restaurantId}/${tableId}`);
+                toast.success('Table deleted');
+                await fetchTables(restaurantId);
+            } catch (err) {
+                toast.error(err.message || 'Failed to delete table');
+            }
+        }, 'Deleting table…');
     };
 
     const downloadQrCode = async (tableId, tableLabel) => {

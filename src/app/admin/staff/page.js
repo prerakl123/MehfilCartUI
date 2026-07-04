@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
+import { useBlocking } from '@/components/ui/BlockingOverlay';
 import { useAuthStore } from '@/store/authStore';
 import RestaurantSelector from '@/components/admin/RestaurantSelector';
 import Button from '@/components/ui/Button';
@@ -13,6 +14,7 @@ import { Plus, Trash2, Users, AlertCircle, User, ShieldAlert, ShieldCheck } from
 
 export default function StaffPage() {
     const toast = useToast();
+    const { runBlocking } = useBlocking();
     const { user, role, restaurantId: authRestaurantId } = useAuthStore();
     const [restaurantId, setLocalRestaurantId] = useState(authRestaurantId);
 
@@ -64,16 +66,17 @@ export default function StaffPage() {
             display_name: formData.get('display_name') || null,
         };
 
-        try {
-            await api.post(`/admin/staff/${restaurantId}`, body);
-            toast.success('Staff member added');
-            setModal({ open: false });
-            fetchStaff(restaurantId);
-        } catch (err) {
-            toast.error(err.message || 'Failed to add staff');
-        } finally {
-            setSaving(false);
-        }
+        await runBlocking(async () => {
+            try {
+                await api.post(`/admin/staff/${restaurantId}`, body);
+                toast.success('Staff member added');
+                setModal({ open: false });
+                await fetchStaff(restaurantId);
+            } catch (err) {
+                toast.error(err.message || 'Failed to add staff');
+            }
+        }, 'Adding staff member…');
+        setSaving(false);
     };
 
     const removeStaff = async (roleId, isSelf) => {
@@ -82,13 +85,15 @@ export default function StaffPage() {
             return;
         }
         if (!confirm('Are you sure you want to remove this staff member?')) return;
-        try {
-            await api.delete(`/admin/staff/${roleId}`);
-            toast.success('Staff removed');
-            fetchStaff(restaurantId);
-        } catch (err) {
-            toast.error('Failed to remove staff');
-        }
+        await runBlocking(async () => {
+            try {
+                await api.delete(`/admin/staff/${roleId}`);
+                toast.success('Staff removed');
+                await fetchStaff(restaurantId);
+            } catch (err) {
+                toast.error('Failed to remove staff');
+            }
+        }, 'Removing staff member…');
     };
 
     return (

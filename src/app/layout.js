@@ -1,4 +1,5 @@
 import { ToastProvider } from "@/components/ui/Toast";
+import { BlockingProvider } from "@/components/ui/BlockingOverlay";
 import "./globals.css";
 
 export const metadata = {
@@ -16,7 +17,9 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <ToastProvider>
-          {children}
+          <BlockingProvider>
+            {children}
+          </BlockingProvider>
         </ToastProvider>
       </body>
     </html>

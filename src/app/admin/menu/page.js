@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
+import { useBlocking } from '@/components/ui/BlockingOverlay';
 import RestaurantSelector from '@/components/admin/RestaurantSelector';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -16,6 +17,7 @@ const DIET_TYPES = ['VEG', 'NON_VEG', 'VEGAN', 'EGGETARIAN'];
 
 export default function MenuPage() {
     const toast = useToast();
+    const { runBlocking } = useBlocking();
     const { role, restaurantId: authRestaurantId } = useAuthStore();
     const [restaurantId, setLocalRestaurantId] = useState(authRestaurantId);
 
@@ -61,22 +63,24 @@ export default function MenuPage() {
             display_order: parseInt(formData.get('display_order')) || 0,
         };
 
-        try {
-            if (catModal.data) {
-                // Update
-                const id = catModal.data.id;
-                await api.patch(`/categories/${id}`, body);
-                toast.success('Category updated');
-            } else {
-                // Create
-                await api.post(`/restaurants/${restaurantId}/categories`, body);
-                toast.success('Category created');
+        await runBlocking(async () => {
+            try {
+                if (catModal.data) {
+                    // Update
+                    const id = catModal.data.id;
+                    await api.patch(`/categories/${id}`, body);
+                    toast.success('Category updated');
+                } else {
+                    // Create
+                    await api.post(`/restaurants/${restaurantId}/categories`, body);
+                    toast.success('Category created');
+                }
+                setCatModal({ open: false, data: null });
+                await fetchMenu(restaurantId);
+            } catch (err) {
+                toast.error(err.message || 'Failed to save category');
             }
-            setCatModal({ open: false, data: null });
-            fetchMenu(restaurantId);
-        } catch (err) {
-            toast.error(err.message || 'Failed to save category');
-        }
+        }, catModal.data ? 'Saving changes…' : 'Creating category…');
     };
 
     // -- Item Actions --
@@ -94,32 +98,36 @@ export default function MenuPage() {
             prep_time_minutes: parseInt(formData.get('prep_time_minutes')) || null,
         };
 
-        try {
-            if (itemModal.data) {
-                // Update
-                await api.patch(`/menu/items/${itemModal.data.id}`, body);
-                toast.success('Item updated');
-            } else {
-                // Create
-                await api.post(`/restaurants/${restaurantId}/menu/items`, body);
-                toast.success('Item created');
+        await runBlocking(async () => {
+            try {
+                if (itemModal.data) {
+                    // Update
+                    await api.patch(`/menu/items/${itemModal.data.id}`, body);
+                    toast.success('Item updated');
+                } else {
+                    // Create
+                    await api.post(`/restaurants/${restaurantId}/menu/items`, body);
+                    toast.success('Item created');
+                }
+                setItemModal({ open: false, data: null, categoryId: null });
+                await fetchMenu(restaurantId);
+            } catch (err) {
+                toast.error(err.message || 'Failed to save menu item');
             }
-            setItemModal({ open: false, data: null, categoryId: null });
-            fetchMenu(restaurantId);
-        } catch (err) {
-            toast.error(err.message || 'Failed to save menu item');
-        }
+        }, itemModal.data ? 'Saving changes…' : 'Creating menu item…');
     };
 
     const deleteItem = async (id) => {
         if (!confirm('Are you sure you want to remove this item?')) return;
-        try {
-            await api.delete(`/menu/items/${id}`);
-            toast.success('Item deleted');
-            fetchMenu(restaurantId);
-        } catch (err) {
-            toast.error('Failed to delete item');
-        }
+        await runBlocking(async () => {
+            try {
+                await api.delete(`/menu/items/${id}`);
+                toast.success('Item deleted');
+                await fetchMenu(restaurantId);
+            } catch (err) {
+                toast.error('Failed to delete item');
+            }
+        }, 'Deleting item…');
     };
 
     return (
