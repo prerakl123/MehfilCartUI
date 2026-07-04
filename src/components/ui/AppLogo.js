@@ -3,17 +3,17 @@ export default function AppLogo({ className = "" }) {
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" className={className}>
             <defs>
                 <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#F3EFFF" />
-                    <stop offset="100%" stopColor="#E0D4FF" />
+                    <stop offset="0%" stopColor="#F6E7E1" />
+                    <stop offset="100%" stopColor="#F0D9CF" />
                 </linearGradient>
 
                 <linearGradient id="iconGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#7C52D6" />
-                    <stop offset="100%" stopColor="#4F2EB3" />
+                    <stop offset="0%" stopColor="#B8492E" />
+                    <stop offset="100%" stopColor="#8F3520" />
                 </linearGradient>
 
                 <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-                    <feDropShadow dx="0" dy="8" stdDeviation="12" floodColor="#4F2EB3" floodOpacity="0.15" />
+                    <feDropShadow dx="0" dy="8" stdDeviation="12" floodColor="#8F3520" floodOpacity="0.15" />
                 </filter>
             </defs>
 
@@ -35,7 +35,7 @@ export default function AppLogo({ className = "" }) {
             <circle cx="280" cy="110" r="14" fill="url(#iconGrad)" />
             <circle cx="200" cy="80" r="16" fill="url(#iconGrad)" />
 
-            <text x="200" y="365" fontFamily="system-ui, -apple-system, sans-serif" fontSize="32" fontWeight="800" fill="#7C52D6" textAnchor="middle" letterSpacing="1.5">MEHFILCART</text>
+            <text x="200" y="365" fontFamily="system-ui, -apple-system, sans-serif" fontSize="32" fontWeight="800" fill="#B8492E" textAnchor="middle" letterSpacing="1.5">MEHFILCART</text>
         </svg>
     );
 }

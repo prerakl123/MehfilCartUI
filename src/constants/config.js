@@ -7,8 +7,13 @@ export const APP_CONFIG = Object.freeze({
     APP_NAME: 'MehfilCart',
     APP_TAGLINE: 'Order Together, Dine Together',
 
-    // API endpoint (consumed from environment variable)
-    API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1',
+    // API endpoint -- relative by default so requests go through the Next.js
+    // rewrite proxy (see next.config.mjs) and stay same-origin, keeping the
+    // refresh_token cookie first-party. Override only if bypassing the proxy.
+    API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || '/api/v1',
+    // WebSockets can't go through the rewrite proxy, so this always points
+    // directly at the backend. The connection authenticates via ?token=, not
+    // the cookie, so it's unaffected by the cross-site cookie restriction.
     SOCKET_URL: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8000',
 
     // Map rendering (MapLibre GL). Only the tile STYLE needs a key in the

@@ -36,8 +36,8 @@ export default function SuperAdminDashboard({ data, router }) {
             label: 'Active Restaurants',
             value: data.total_active_restaurants,
             icon: Store,
-            color: 'text-violet-500',
-            bgColor: 'bg-violet-500/10',
+            color: 'text-primary',
+            bgColor: 'bg-primary/10',
         },
         {
             label: 'Global Active Sessions',

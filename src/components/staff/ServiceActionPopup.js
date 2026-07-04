@@ -11,7 +11,7 @@ const ACTION_CONFIG = {
     TABLE_CLEANUP: { label: 'Table Cleanup', icon: Sparkles, color: 'text-amber-400', bg: 'bg-amber-400/20' },
     WATER_REFILL: { label: 'Water Refill', icon: Droplets, color: 'text-cyan-400', bg: 'bg-cyan-400/20' },
     EXTRA_CUTLERY: { label: 'Extra Cutlery', icon: UtensilsCrossed, color: 'text-emerald-400', bg: 'bg-emerald-400/20' },
-    BILL_REQUEST: { label: 'Bill Request', icon: Receipt, color: 'text-purple-400', bg: 'bg-purple-400/20' },
+    BILL_REQUEST: { label: 'Bill Request', icon: Receipt, color: 'text-primary', bg: 'bg-primary/20' },
 };
 
 export default function ServiceActionPopup({ action, onDismiss, onClaimed }) {

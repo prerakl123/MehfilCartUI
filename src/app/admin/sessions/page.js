@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import RestaurantSelector from '@/components/admin/RestaurantSelector';
@@ -10,6 +11,7 @@ import { useAuthStore } from '@/store/authStore';
 import { RefreshCcw, Timer, AlertCircle, ChevronRight, Lock } from 'lucide-react';
 
 export default function SessionsPage() {
+    const router = useRouter();
     const toast = useToast();
     const { role, restaurantId: authRestaurantId } = useAuthStore();
     const [restaurantId, setLocalRestaurantId] = useState(authRestaurantId);
@@ -156,7 +158,12 @@ export default function SessionsPage() {
                                 <Badge variant={getStatusVariant(session.status)} className="px-2.5 py-1">
                                     {session.status}
                                 </Badge>
-                                <Button size="sm" variant="ghost" className="h-9 px-3 hover:bg-primary/10 hover:text-primary">
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-9 px-3 hover:bg-primary/10 hover:text-primary"
+                                    onClick={() => router.push(`/admin/sessions/${session.id}?restaurantId=${restaurantId}`)}
+                                >
                                     View Details
                                     <ChevronRight className="ml-1 h-4 w-4" />
                                 </Button>

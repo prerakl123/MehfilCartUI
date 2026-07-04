@@ -33,8 +33,8 @@ export default function RestaurantDashboard({ data, router, role }) {
             label: 'Orders Today',
             value: data.orders_today,
             icon: Package,
-            color: 'text-purple-500',
-            bgColor: 'bg-purple-500/10',
+            color: 'text-primary',
+            bgColor: 'bg-primary/10',
             trend: `${data.orders_trend > 0 ? '+' : ''}${data.orders_trend}%`,
             trendUp: data.orders_trend >= 0
         },
@@ -57,7 +57,7 @@ export default function RestaurantDashboard({ data, router, role }) {
         },
     ];
 
-    const COLORS = ['hsl(var(--primary))', '#8b5cf6', '#3b82f6', '#f59e0b', '#ef4444', '#10b981'];
+    const COLORS = ['#B8492E', '#E07856', '#3b82f6', '#f59e0b', '#ef4444', '#10b981'];
 
     const CustomTooltip = ({ active, payload, label, prefix = '' }) => {
         if (active && payload && payload.length) {
@@ -145,7 +145,7 @@ export default function RestaurantDashboard({ data, router, role }) {
                                     <YAxis yAxisId="right" orientation="right" stroke="currentColor" className="text-muted-foreground text-xs font-medium" tickLine={false} axisLine={false} width={40} />
                                     <Tooltip content={<CustomTooltip />} />
                                     <Area yAxisId="left" type="monotone" name="Revenue" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#colorRevs)" activeDot={{ r: 6, strokeWidth: 0, fill: "hsl(var(--primary))" }} />
-                                    <Area yAxisId="right" type="step" name="Orders" dataKey="orders" stroke="#8b5cf6" strokeWidth={2} fill="transparent" />
+                                    <Area yAxisId="right" type="step" name="Orders" dataKey="orders" stroke="#B8492E" strokeWidth={2} fill="transparent" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         )}

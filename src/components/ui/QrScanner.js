@@ -14,35 +14,31 @@ export default function QrScanner({ isOpen, onClose, onScan }) {
     const canvasRef = useRef(null);
     const streamRef = useRef(null);
     const animFrameRef = useRef(null);
+    // Bumped on every stop/restart so an in-flight getUserMedia() call from a
+    // superseded request can recognize it's stale and stop its stream instead
+    // of leaking it (this is what kept the camera light on after navigating away).
+    const requestIdRef = useRef(0);
     const [error, setError] = useState('');
     const [facingMode, setFacingMode] = useState('environment');
 
     const stopCamera = useCallback(() => {
+        requestIdRef.current += 1;
         if (animFrameRef.current) {
             cancelAnimationFrame(animFrameRef.current);
             animFrameRef.current = null;
         }
+        const video = videoRef.current;
+        const tracks = new Set();
         if (streamRef.current) {
-            streamRef.current.getTracks().forEach((t) => t.stop());
-            streamRef.current = null;
+            streamRef.current.getTracks().forEach((t) => tracks.add(t));
         }
+        if (video?.srcObject) {
+            video.srcObject.getTracks().forEach((t) => tracks.add(t));
+            video.srcObject = null;
+        }
+        tracks.forEach((t) => t.stop());
+        streamRef.current = null;
     }, []);
-
-    const startCamera = useCallback(async () => {
-        setError('');
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode, width: { ideal: 640 }, height: { ideal: 480 } },
-            });
-            streamRef.current = stream;
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                videoRef.current.play();
-            }
-        } catch (err) {
-            setError('Camera access denied. Please allow camera permissions and try again.');
-        }
-    }, [facingMode]);
 
     // Scan loop using BarcodeDetector API (available in modern browsers)
     const scanLoop = useCallback(async () => {
@@ -80,35 +76,44 @@ export default function QrScanner({ isOpen, onClose, onScan }) {
         animFrameRef.current = requestAnimationFrame(scanLoop);
     }, [onScan, stopCamera]);
 
-    useEffect(() => {
-        if (isOpen) {
-            startCamera();
+    const startCamera = useCallback(async () => {
+        setError('');
+        const requestId = ++requestIdRef.current;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode, width: { ideal: 640 }, height: { ideal: 480 } },
+            });
+            if (requestId !== requestIdRef.current) {
+                // A stop/restart happened while permission was pending -- discard
+                // this stream immediately instead of leaving it orphaned and live.
+                stream.getTracks().forEach((t) => t.stop());
+                return;
+            }
+            streamRef.current = stream;
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                videoRef.current.play().catch(() => {});
+            }
+            animFrameRef.current = requestAnimationFrame(scanLoop);
+        } catch (err) {
+            if (requestId === requestIdRef.current) {
+                setError('Camera access denied. Please allow camera permissions and try again.');
+            }
         }
+    }, [facingMode, scanLoop]);
+
+    // Single owner of the camera lifecycle: opens on mount/open, restarts on
+    // facing-mode change (via startCamera's identity), and always tears down
+    // through the same stopCamera path.
+    useEffect(() => {
+        if (!isOpen) return undefined;
+        startCamera();
         return () => stopCamera();
     }, [isOpen, startCamera, stopCamera]);
 
-    useEffect(() => {
-        if (isOpen && streamRef.current) {
-            animFrameRef.current = requestAnimationFrame(scanLoop);
-        }
-        return () => {
-            if (animFrameRef.current) {
-                cancelAnimationFrame(animFrameRef.current);
-            }
-        };
-    }, [isOpen, scanLoop]);
-
     const toggleCamera = () => {
-        stopCamera();
         setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'));
     };
-
-    // Re-start camera when facingMode changes
-    useEffect(() => {
-        if (isOpen) {
-            startCamera();
-        }
-    }, [facingMode, isOpen, startCamera]);
 
     if (!isOpen) return null;
 

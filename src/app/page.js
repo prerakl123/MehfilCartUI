@@ -92,7 +92,7 @@ export default function LandingPage() {
   return (
     <main className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden bg-background px-4 py-12">
       {/* Clean radial gradient background matching the image */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(243,239,255,1)_0%,_rgba(255,255,255,0)_70%)] dark:bg-[radial-gradient(ellipse_at_top,_rgba(124,82,214,0.15)_0%,_rgba(0,0,0,0)_70%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(246,231,225,1)_0%,_rgba(255,255,255,0)_70%)] dark:bg-[radial-gradient(ellipse_at_top,_rgba(184,73,46,0.15)_0%,_rgba(0,0,0,0)_70%)]" />
 
       <div className="relative z-10 mx-auto flex w-full max-w-[420px] flex-col items-center text-center">
 
@@ -101,7 +101,7 @@ export default function LandingPage() {
           <AppLogo />
         </div>
 
-        <h1 className="mb-4 bg-gradient-to-br from-[#7C52D6] to-[#4F2EB3] bg-clip-text text-[28px] font-extrabold tracking-tight text-transparent dark:from-[#9d7cf3] dark:to-[#7C52D6]">
+        <h1 className="mb-4 bg-gradient-to-br from-[#B8492E] to-[#8F3520] bg-clip-text text-[28px] font-extrabold tracking-tight text-transparent dark:from-[#E07856] dark:to-[#B8492E]">
           MehfilCart
         </h1>
 
@@ -112,7 +112,7 @@ export default function LandingPage() {
         {/* QR Scanned -- choice screen */}
         {scannedData ? (
           <div className="w-full rounded-2xl border border-border bg-card p-6 shadow-sm mb-14">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F3EFFF] text-[#7C52D6] dark:bg-primary/20 dark:text-primary">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F6E7E1] text-[#B8492E] dark:bg-primary/20 dark:text-primary">
               <QrCode className="h-7 w-7" />
             </div>
             <h3 className="mb-2 text-xl font-bold text-foreground">Table Found</h3>
@@ -120,7 +120,7 @@ export default function LandingPage() {
             <div className="flex flex-col gap-3">
               <Button
                 size="lg"
-                className="w-full gap-2 text-base font-semibold bg-[#7C52D6] hover:bg-[#633eb0] text-white"
+                className="w-full gap-2 text-base font-semibold bg-[#B8492E] hover:bg-[#97371F] text-white"
                 onClick={() => {
                   if (isAuthenticated) {
                     router.push(`/join/${scannedData.restaurantId}/${scannedData.tableId}`);
@@ -147,7 +147,7 @@ export default function LandingPage() {
           <div className="flex w-full flex-col gap-3 mb-16 px-4">
             {isAuthenticated ? (
               (role === 'SUPER_ADMIN' || role === 'RESTAURANT_ADMIN' || role === 'WAITER') ? (
-                <Button size="lg" className="h-14 w-full text-[15px] font-semibold bg-[#7C52D6] hover:bg-[#633eb0] text-white rounded-xl" onClick={() => router.push(role === 'WAITER' ? '/staff' : '/admin')}>
+                <Button size="lg" className="h-14 w-full text-[15px] font-semibold bg-[#B8492E] hover:bg-[#97371F] text-white rounded-xl" onClick={() => router.push(role === 'WAITER' ? '/staff' : '/admin')}>
                   Go to Dashboard
                 </Button>
               ) : (
@@ -176,7 +176,7 @@ export default function LandingPage() {
               )
             ) : (
               <>
-                <Button size="lg" className="h-[52px] w-full text-[15px] font-semibold bg-[#673AB7] hover:bg-[#5E35B1] text-white rounded-xl shadow-md transition-all" onClick={() => router.push('/login')}>
+                <Button size="lg" className="h-[52px] w-full text-[15px] font-semibold bg-[#B8492E] hover:bg-[#97371F] text-white rounded-xl shadow-md transition-all" onClick={() => router.push('/login')}>
                   Login with Phone
                 </Button>
                 <Button
@@ -197,7 +197,7 @@ export default function LandingPage() {
         <div className="mt-auto grid w-full grid-cols-3 gap-3 px-1">
           {/* Feature 1 */}
           <div className="flex flex-col items-center text-center">
-            <div className="mb-3 flex h-[52px] w-[52px] items-center justify-center rounded-[18px] bg-[#F3EFFF] text-[#7C52D6] shadow-sm transition-transform hover:scale-105 dark:bg-primary/20 dark:text-primary">
+            <div className="mb-3 flex h-[52px] w-[52px] items-center justify-center rounded-[18px] bg-[#F6E7E1] text-[#B8492E] shadow-sm transition-transform hover:scale-105 dark:bg-primary/20 dark:text-primary">
               <BookOpen className="h-[22px] w-[22px]" strokeWidth={2.5} />
             </div>
             <h4 className="mb-1 text-[13px] font-bold text-foreground">Explore Menu</h4>
@@ -206,7 +206,7 @@ export default function LandingPage() {
 
           {/* Feature 2 */}
           <div className="flex flex-col items-center text-center">
-            <div className="mb-3 flex h-[52px] w-[52px] items-center justify-center rounded-[18px] bg-[#F3EFFF] text-[#7C52D6] shadow-sm transition-transform hover:scale-105 dark:bg-primary/20 dark:text-primary">
+            <div className="mb-3 flex h-[52px] w-[52px] items-center justify-center rounded-[18px] bg-[#F6E7E1] text-[#B8492E] shadow-sm transition-transform hover:scale-105 dark:bg-primary/20 dark:text-primary">
               <ShoppingCart className="h-[22px] w-[22px]" strokeWidth={2.5} />
             </div>
             <h4 className="mb-1 text-[13px] font-bold text-foreground">Manage Orders</h4>
@@ -215,7 +215,7 @@ export default function LandingPage() {
 
           {/* Feature 3 */}
           <div className="flex flex-col items-center text-center">
-            <div className="mb-3 flex h-[52px] w-[52px] items-center justify-center rounded-[18px] bg-[#F3EFFF] text-[#7C52D6] shadow-sm transition-transform hover:scale-105 dark:bg-primary/20 dark:text-primary">
+            <div className="mb-3 flex h-[52px] w-[52px] items-center justify-center rounded-[18px] bg-[#F6E7E1] text-[#B8492E] shadow-sm transition-transform hover:scale-105 dark:bg-primary/20 dark:text-primary">
               <Receipt className="h-[22px] w-[22px]" strokeWidth={2.5} />
             </div>
             <h4 className="mb-1 text-[13px] font-bold text-foreground">Finalize Bill</h4>

@@ -56,10 +56,14 @@ export default function StaffDashboardPage() {
         if (authLoading || !restaurantId) return;
         fetchDashboardData();
 
-        const token = localStorage.getItem('access_token');
-        let socket;
+        let isActive = true;
+        let socket = null;
+        let reconnectTimer = null;
 
-        if (token) {
+        const connect = () => {
+            const token = localStorage.getItem('access_token');
+            if (!token || !isActive) return;
+
             const wsUrl = APP_CONFIG.SOCKET_URL.replace('http', 'ws') + `/api/v1/ws?token=${token}`;
             socket = new WebSocket(wsUrl);
 
@@ -70,22 +74,37 @@ export default function StaffDashboardPage() {
             socket.onmessage = (event) => {
                 try {
                     const message = JSON.parse(event.data);
-                    // Handle orders
-                    if (message.event === 'order:created' || message.event === 'order:updated') {
-                        fetchDashboardData(true);
-                    }
-                    // Handle service actions
-                    if (message.event === 'service_action:created' || message.event === 'service_action:updated') {
+                    if (
+                        message.event === 'order:created' || message.event === 'order:updated' ||
+                        message.event === 'service_action:created' || message.event === 'service_action:updated'
+                    ) {
                         fetchDashboardData(true);
                     }
                 } catch (e) {
                     console.error('Invalid WS message', e);
                 }
             };
-        }
+
+            // Auto-reconnect on drop so live updates survive network blips / Render idle spin-downs
+            socket.onclose = () => {
+                if (!isActive) return;
+                clearTimeout(reconnectTimer);
+                reconnectTimer = setTimeout(connect, APP_CONFIG.RECONNECT_INTERVAL_MS);
+            };
+            socket.onerror = () => socket.close();
+        };
+
+        connect();
+
+        // Polling fallback -- guarantees the board stays live even if the WS never connects or drops
+        const pollInterval = setInterval(() => fetchDashboardData(true), 10000);
 
         return () => {
-            if (socket && socket.readyState === WebSocket.OPEN) {
+            isActive = false;
+            clearTimeout(reconnectTimer);
+            clearInterval(pollInterval);
+            if (socket) {
+                socket.onclose = null; // prevent reconnect on intentional teardown
                 socket.close();
             }
         };
@@ -138,8 +157,9 @@ export default function StaffDashboardPage() {
         );
     }
     
-    // Calculate summary stats
-    const activeOrders = orders.length; // Active ones served from /admin/orders endpoint
+    // Calculate summary stats -- only orders still in the live pipeline count as "active"
+    // (the /admin/orders endpoint returns the full 24h list including CANCELLED/SERVED/COMPLETED).
+    const activeOrders = orders.filter(o => ['RECEIVED', 'PREPARING', 'READY'].includes(o.status)).length;
     const readyOrders = getOrdersByStatus('READY').length;
     const activeTables = tables.filter(t => t.active_session_id != null).length;
 

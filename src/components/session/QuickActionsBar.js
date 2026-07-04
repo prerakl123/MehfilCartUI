@@ -11,7 +11,7 @@ const ACTIONS = [
     { id: 'TABLE_CLEANUP', label: 'Clean Table', icon: Sparkles, color: 'text-amber-500', bg: 'bg-amber-50' },
     { id: 'WATER_REFILL', label: 'Water', icon: Droplets, color: 'text-cyan-500', bg: 'bg-cyan-50' },
     { id: 'EXTRA_CUTLERY', label: 'Cutlery', icon: UtensilsCrossed, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-    { id: 'BILL_REQUEST', label: 'Bill', icon: Receipt, color: 'text-purple-500', bg: 'bg-purple-50' },
+    { id: 'BILL_REQUEST', label: 'Bill', icon: Receipt, color: 'text-primary', bg: 'bg-primary/10' },
 ];
 
 export default function QuickActionsBar({ sessionId }) {
