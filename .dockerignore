@@ -1,0 +1,13 @@
+# Dependencies (the image installs its own under /app/node_modules)
+node_modules
+# Build output
+.next
+out
+# VCS
+.git
+.gitignore
+# Local env -- provided at runtime via compose environment
+.env*
+# Docker
+Dockerfile
+.dockerignore

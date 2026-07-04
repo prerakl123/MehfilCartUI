@@ -3,21 +3,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
+import { useBlocking } from '@/components/ui/BlockingOverlay';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
+import MapPicker from '@/components/admin/MapPicker';
 import { useAuthStore } from '@/store/authStore';
-import { Plus, Store, MapPin, Phone, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Store, MapPin, Phone, Edit2, Trash2, ExternalLink } from 'lucide-react';
 
 export default function RestaurantsPage() {
     const toast = useToast();
+    const { runBlocking } = useBlocking();
     const { isAuthenticated, role } = useAuthStore();
     const [restaurants, setRestaurants] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingRestaurant, setEditingRestaurant] = useState(null);
     const [form, setForm] = useState({ name: '', slug: '', address: '', phone: '' });
+    const [location, setLocation] = useState({ latitude: null, longitude: null, provider: null, placeId: null });
     const [saving, setSaving] = useState(false);
 
     const fetchRestaurants = useCallback(async () => {
@@ -38,6 +42,7 @@ export default function RestaurantsPage() {
     const openCreate = () => {
         setEditingRestaurant(null);
         setForm({ name: '', slug: '', address: '', phone: '' });
+        setLocation({ latitude: null, longitude: null, provider: null, placeId: null });
         setShowModal(true);
     };
 
@@ -49,7 +54,21 @@ export default function RestaurantsPage() {
             address: restaurant.address || '',
             phone: restaurant.phone || '',
         });
+        setLocation({
+            latitude: restaurant.location?.latitude ?? null,
+            longitude: restaurant.location?.longitude ?? null,
+            provider: restaurant.location?.provider ?? null,
+            placeId: restaurant.location?.provider_place_id ?? null,
+        });
         setShowModal(true);
+    };
+
+    /** Pin moved on the map: store coords; prefill the address only if empty. */
+    const handleLocationChange = ({ latitude, longitude, provider, placeId, address }) => {
+        setLocation({ latitude, longitude, provider: provider ?? null, placeId: placeId ?? null });
+        if (address) {
+            setForm((prev) => (prev.address?.trim() ? prev : { ...prev, address }));
+        }
     };
 
     /** Auto-generate slug from name. */
@@ -69,33 +88,43 @@ export default function RestaurantsPage() {
             return;
         }
         setSaving(true);
-        try {
-            if (editingRestaurant) {
-                await api.patch(`/admin/restaurants/${editingRestaurant.id}`, form);
-                toast.success('Restaurant updated.');
-            } else {
-                await api.post('/admin/restaurants', form);
-                toast.success('Restaurant created.');
+        await runBlocking(async () => {
+            try {
+                const saved = editingRestaurant
+                    ? await api.patch(`/admin/restaurants/${editingRestaurant.id}`, form)
+                    : await api.post('/admin/restaurants', form);
+                // Persist the map location if a pin was placed.
+                if (location.latitude != null && location.longitude != null) {
+                    await api.put(`/admin/restaurants/${saved.id}/location`, {
+                        formatted_address: form.address || null,
+                        latitude: location.latitude,
+                        longitude: location.longitude,
+                        provider: location.provider,
+                        provider_place_id: location.placeId,
+                    });
+                }
+                toast.success(editingRestaurant ? 'Restaurant updated.' : 'Restaurant created.');
+                setShowModal(false);
+                await fetchRestaurants();
+            } catch (err) {
+                toast.error(err.message || 'Failed to save restaurant.');
             }
-            setShowModal(false);
-            fetchRestaurants();
-        } catch (err) {
-            toast.error(err.message || 'Failed to save restaurant.');
-        } finally {
-            setSaving(false);
-        }
+        }, editingRestaurant ? 'Saving changes…' : 'Creating restaurant…');
+        setSaving(false);
     };
 
     const handleDelete = async (id, e) => {
         if (e) e.stopPropagation();
         if (!confirm('Are you sure you want to delete this restaurant? This cannot be undone.')) return;
-        try {
-            await api.delete(`/admin/restaurants/${id}`);
-            toast.success('Restaurant deleted');
-            fetchRestaurants();
-        } catch (err) {
-            toast.error(err.message || 'Failed to delete restaurant');
-        }
+        await runBlocking(async () => {
+            try {
+                await api.delete(`/admin/restaurants/${id}`);
+                toast.success('Restaurant deleted');
+                await fetchRestaurants();
+            } catch (err) {
+                toast.error(err.message || 'Failed to delete restaurant');
+            }
+        }, 'Deleting restaurant…');
     };
 
     if (loading) {
@@ -171,6 +200,19 @@ export default function RestaurantsPage() {
                                             <span className="truncate">{r.phone}</span>
                                         </div>
                                     )}
+                                    {r.location?.map_url && (
+                                        <a
+                                            href={r.location.map_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="flex items-center gap-2.5 text-sm font-medium text-primary hover:underline"
+                                        >
+                                            <MapPin className="h-4 w-4 shrink-0" />
+                                            <span className="truncate">View on map</span>
+                                            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                                        </a>
+                                    )}
                                 </div>
                             </div>
                             <div className="mt-4 flex items-center justify-end gap-2 border-t border-border pt-4">
@@ -243,6 +285,17 @@ export default function RestaurantsPage() {
                         onChange={(e) => setForm({ ...form, phone: e.target.value })}
                         placeholder="9876543210"
                     />
+                    <div className="grid w-full items-center gap-1.5">
+                        <label className="text-sm font-medium leading-none text-foreground">Location on map</label>
+                        <p className="text-xs text-muted-foreground">
+                            Search for the restaurant, then click the map or drag the pin to set the exact spot.
+                        </p>
+                        <MapPicker
+                            latitude={location.latitude}
+                            longitude={location.longitude}
+                            onChange={handleLocationChange}
+                        />
+                    </div>
                 </div>
             </Modal>
         </div>
